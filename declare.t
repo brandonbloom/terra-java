@@ -18,11 +18,11 @@ local P = {}
 
 P.class = terralib.memoize(function(name)
 
-  local struct Class {
+  local struct T {
     _obj : JVM.Object;
   }
 
-  jtypes.register(name, Class)
+  jtypes.register(name, T)
 
   local clazz = global(J.class)
   pushinit(quote
@@ -32,30 +32,30 @@ P.class = terralib.memoize(function(name)
     end
   end)
 
-  Class.methods.static = terra(env : JVM.Env) : Class
-    return Class{JVM.Object{env = env, this = nil}}
+  T.methods.static = terra(env : JVM.Env) : T
+    return T{JVM.Object{env = env, this = nil}}
   end
 
   -- Like the ".class" syntax in Java, but with parens.
-  Class.methods.class = terra()
+  T.methods.class = terra()
     return clazz
   end
 
-  Class.metamethods.__typename = function(self)
+  T.metamethods.__typename = function(self)
     return name
   end
 
-  Class.metamethods.__cast = function(from, to, expr)
+  T.metamethods.__cast = function(from, to, expr)
     if to == J.object then
       return `expr._obj.this
     end
     if from == J.object then
-      return `Class{JVM.Object{env = ENV, this = expr}}
+      return `T{JVM.Object{env = ENV, this = expr}}
     end
     util.errorf("Unable to cast to or from %s", name)
   end
 
-  return Class
+  return T
 
 end)
 
