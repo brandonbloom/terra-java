@@ -97,9 +97,9 @@ function P.jni_type(typ)
   return J.object
 end
 
-function P.register(name, typ)
-  java_names[typ] = name:gsub("/", ".")
-  jvm_names[typ] = "L" .. name .. ";"
+function P.register(java_name, jvm_name, typ)
+  java_names[typ] = java_name
+  jvm_names[typ] = jvm_name
 end
 
 return P

@@ -22,7 +22,13 @@ P.class = terralib.memoize(function(name)
     _obj : JVM.Object;
   }
 
-  jtypes.register(name, T)
+  T.metamethods.__typename = function(self)
+    return name
+  end
+
+  local java_name = name:gsub("/", ".")
+  local jvm_name = "L" .. name .. ";"
+  jtypes.register(java_name, jvm_name, T)
 
   local clazz = global(J.class)
   pushinit(quote
@@ -31,6 +37,12 @@ P.class = terralib.memoize(function(name)
       util.fatal(["Class not found: " .. name])
     end
   end)
+
+  -- These special methods are all reserved words in Java, so it's OK :-)
+
+  T.methods.this = terra(env : JVM.Env, this : J.object)
+    return T{JVM.Object{env = env, this = this}}
+  end
 
   T.methods.static = terra(env : JVM.Env) : T
     return T{JVM.Object{env = env, this = nil}}
@@ -41,29 +53,29 @@ P.class = terralib.memoize(function(name)
     return clazz
   end
 
-  T.metamethods.__typename = function(self)
-    return name
-  end
-
   T.metamethods.__cast = function(from, to, expr)
     if to == J.object then
       return `expr._obj.this
     end
-    if from == J.object then
-      return `T{JVM.Object{env = ENV, this = expr}}
-    end
-    util.errorf("Unable to cast to or from %s", name)
+    util.errorf("Unable to cast %s", name)
   end
 
   return T
 
 end)
 
-P.method = terralib.memoize(function(Class, ret, name, params)
+local convert = macro(function(T, expr)
+  if jtypes.primitive(T) then
+    return expr
+  end
+  return `T.this(ENV, expr)
+end)
+
+P.method = terralib.memoize(function(T, ret, name, params)
 
   local static = (#params == 0 or params[1].displayname ~= "self")
-  local self = static and symbol(Class, "self") or params[1]
-  local target = static and (`JVM.Class{[ENV], Class.class()}) or `self
+  local self = static and symbol(T, "self") or params[1]
+  local target = static and (`JVM.Class{[ENV], T.class()}) or (`self._obj)
   params = static and params or util.popl(params)
   local sig = jtypes.jvm_sig(ret, params)
   local modifier = static and "Static" or ""
@@ -72,9 +84,9 @@ P.method = terralib.memoize(function(Class, ret, name, params)
 
   local mid = global(J.methodID)
   pushinit(quote
-    mid = ENV:[get](Class.class(), name, sig)
+    mid = ENV:[get](T.class(), name, sig)
     if mid == nil then
-      util.fatal([("Method not found: %s.%s%s"):format(Class, name, sig)])
+      util.fatal([("Method not found: %s.%s%s"):format(T, name, sig)])
     end
   end)
 
@@ -83,12 +95,15 @@ P.method = terralib.memoize(function(Class, ret, name, params)
     return `[cast](param)
   end)
 
-  Class.methods[name] = terra([self], [params]) : ret
+  print("??", ret)
+  T.methods[name] = terra([self], [params]) : ret
     var [ENV] = self._obj.env
-    return [ret](target:[call](mid, [args]))
+    return convert(ret, target:[call](mid, [args]))
   end
 
 end)
+
+--XXX declare_init T.methods.new = ...
 
 --TODO: export JNI_OnLoad when compiling a jnilib, call this.
 function P.makeinit()
