@@ -1,4 +1,5 @@
 local util = require "util"
+local C = require "c"
 local J = require "j"
 
 local P = {}
@@ -18,21 +19,22 @@ local struct Object {
 }
 
 Env.metamethods.__methodmissing = macro(function(name, self, ...)
-  local args = {...}
-  return `(@self.jenv).[name](self.jenv, args)
+  local args = terralib.newlist({...})
+  return `(@self.jenv).[name](self.jenv, [args])
 end)
 
 Class.metamethods.__methodmissing = macro(function(name, self, ...)
   local args = {...}
-  return `self.env:[name](self.class, args)
+  return `self.env:[name](self.class, [args])
 end)
 
 Object.metamethods.__methodmissing = macro(function(name, self, ...)
   local args = {...}
-  return `self.env:[name](self.this, args)
+  return `self.env:[name](self.this, [args])
 end)
 
 
+P.ENV = symbol("env")
 P.Env = Env
 P.Class = Class
 P.Object = Object

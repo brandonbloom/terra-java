@@ -59,8 +59,8 @@ end
 
 function P.jvm_sig(ret, params)
   local sig = "("
-  for i, typ in ipairs(params) do
-    sig = sig .. P.jvm_name(typ)
+  for i, sym in ipairs(params) do
+    sig = sig .. P.jvm_name(sym.type)
   end
   sig = sig .. ")" .. P.jvm_name(ret)
   return sig
@@ -77,6 +77,24 @@ function P.jni_name(typ)
   if typ == J.float then return "Float" end
   if typ == J.double then return "Double" end
   return "Object"
+end
+
+function P.primitive(typ)
+  return typ == J.boolean
+      or typ == J.byte
+      or typ == J.char
+      or typ == J.short
+      or typ == J.int
+      or typ == J.long
+      or typ == J.float
+      or typ == J.double
+end
+
+function P.jni_type(typ)
+  if P.primitive(typ) then
+    return typ
+  end
+  return J.object
 end
 
 function P.register(name, typ)

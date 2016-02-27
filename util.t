@@ -1,9 +1,6 @@
 local P = {}
 
-local C = terralib.includecstring [[
-  #include <stdio.h>
-  #include <stdlib.h>
-]]
+local C = require "c"
 
 P.fatal = macro(function(fmt, ...)
   fmt = "fatal: " .. fmt:asvalue() .. "\n"
@@ -16,7 +13,7 @@ end)
 
 function P.errorf(fmt, ...)
   fmt = fmt .. "\n"
-  error(fmt:format(...))
+  error(fmt:format(...), 2)
 end
 
 function P.popl(lst)
