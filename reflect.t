@@ -36,72 +36,48 @@ declare.methods(Method, {
 --XXX do bootstrap inits here
 
 
--- Callback functions for building up the description of a reflected class.
---XXX just directly declare things, rather than build tables.
+-- Callback functions called during type visitation.
 
-local stack = {}     -- Things that are being built.
-local subject = nil  -- Top of the stack.
-local built = nil    -- Most recently finished thing.
+local class = nil
+local subject = nil
 
-local function begin(kind)
-  if subject then
-    table.insert(stack, subject)
-  end
-  subject = {kind = kind}
-end
-
-local function finish()
-  built = subject
-  subject = table.remove(stack)
-end
-
-local function begin_class()
-  begin("class")
-  subject.methods = {}
-  subject.constructors = {}
-end
-
-local function finish_class()
-  finish()
+local function visit_class(chars, len)
+  class = declare.class(ffi.string(chars, len))
 end
 
 local function begin_method()
-  begin("method")
-  subject.params = {}
+  subject = {params = {symbol(class, "self")}}
 end
 
 local function finish_method()
-  finish()
-  table.insert(subject.methods, built)
+  declare.method(class, subject.returns, subject.name, subject.params)
 end
 
 local function begin_constructor()
-  begin("constructor")
-  subject.params = {}
+  subject = {params = {}}
 end
 
 local function finish_constructor()
-  finish()
-  table.insert(subject.constructors, built)
+  --XXX declare.constructor(class, subject.params)
 end
 
 local function set_name(chars, len)
   subject.name = ffi.string(chars, len)
-  print(subject.kind, subject.name)
 end
 
 local function set_returns(chars, len)
   subject.returns = declare.type(ffi.string(chars, len))
-  print("", "returns", "", subject.returns)
 end
 
 local function add_param(chars, len)
-  local param = declare.type(ffi.string(chars, len))
+  local typ = declare.type(ffi.string(chars, len))
+  local name = "arg" .. #subject.params - 1
+  local param = symbol(typ, name)
   table.insert(subject.params, param)
-  print("", "param", "", param)
 end
 
--- Via Java reflection, visit a type and call the above builders.
+
+-- Via Java reflection, visit a type with above callbacks.
 
 --TODO: belongs elsewhere?
 local unpackstr = macro(function(s)
@@ -127,8 +103,7 @@ end)
 
 local terra visit(class : Class) : {}
 
-  begin_class()
-  doname(class, set_name)
+  doname(class, visit_class)
 
   var ctors = class:getConstructors()
   for i = 0, ctors:len() do
@@ -139,8 +114,6 @@ local terra visit(class : Class) : {}
   for i = 0, methods:len() do
     visit(methods:get(i))
   end
-
-  finish_class()
 
 end
 and
@@ -181,13 +154,11 @@ local terra doreflect([ENV] : JVM.Env, name : rawstring)
 end
 
 
--- Lua entry point to class reflection.
+-- Automatically declares a class and all members via reflection.
 local function reflect(env, name)
   doreflect(env, name)
-  assert(built and not subject and #stack == 0)
-  local ret = built
-  built = nil
-  return ret
+  subject = nil
+  class = nil
 end
 
 reflect(declare.makeinit()(), "java.lang.StringBuilder")
