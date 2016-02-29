@@ -5,12 +5,13 @@ local declare = require "declare"
 
 local ENV = JVM.ENV
 
+local Array = declare.Array
 local String = declare.class("java/lang/String")
 local Method = declare.class("java/lang/reflect/Method")
 local Class = declare.class("java/lang/Class")
 
 declare.method(Class, Class, "forName", {symbol(String, "className")})
-declare.method(Class, JVM.Array(Method), "getMethods", {symbol(Class, "self")})
+declare.method(Class, Array(Method), "getMethods", {symbol(Class, "self")})
 declare.method(Method, String, "getName", {symbol(Method, "self")})
 
 -- declare.method(Runtime, Runtime, "getRuntime", {})
@@ -28,7 +29,5 @@ local terra blah([ENV] : JVM.Env)
     C.printf("%d %p %p\n", n, method, name)
   end
 end
-
-blah:printpretty()
 
 blah(declare.makeinit()())
