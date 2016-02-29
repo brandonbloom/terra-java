@@ -115,6 +115,7 @@ end)
 
 P.constructor = function(T, params)
   P.method(T, J.void, "<init>", params)
+  --XXX create a T.new(...) method
 end
 
 P.methods = function(T, sigs)
@@ -180,8 +181,6 @@ end)
 for _, T in pairs(jtypes.java_primitives) do
   P.Array(T)
 end
-
---XXX declare_init T.methods.new = ...
 
 --TODO: export JNI_OnLoad when compiling a jnilib, call this.
 function P.makeinit()
