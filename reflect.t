@@ -23,6 +23,7 @@ declare.methods(Class, {
 declare.methods(Method, {
   {String, "getName", {symbol(Method, "self")}},
   {Class, "getReturnType", {symbol(Method, "self")}},
+  {Array(Class), "getParameterTypes", {symbol(Method, "self")}},
 })
 
 
@@ -70,7 +71,13 @@ end
 
 local function set_returns(chars, len)
   subject.returns = ffi.string(chars, len)
-  print("", subject.returns)
+  print("", "returns", "", subject.returns)
+end
+
+local function add_param(chars, len)
+  local param = ffi.string(chars, len)
+  table.insert(subject.params, param)
+  print("", "param", "", param)
 end
 
 -- Via Java reflection, visit a type and call the above builders.
@@ -112,6 +119,14 @@ local terra visit(method : Method) : {}
     var name = returns:getName()
     var chars, len = unpackstr(name)
     set_returns(chars, len)
+  end
+  var params = method:getParameterTypes()
+  var n = params:len()
+  for i = 0, n do
+    var param = params:get(0)
+    var name = param:getName()
+    var chars, len = unpackstr(name)
+    add_param(chars, len)
   end
   finish_method()
 end
