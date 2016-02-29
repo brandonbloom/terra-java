@@ -182,6 +182,8 @@ end
 --TODO: export JNI_OnLoad when compiling a jnilib, call this.
 function P.makeinit()
   local statements = inits
+  --XXX set inits to nil - except when called during bootstrap in reflect
+  --XXX ^^^ consider alternative approachs to untangle jvm/declare/reflect.
   return terra()
     var [ENV] = JVM.init()
     [statements]

@@ -13,11 +13,18 @@ local Array = declare.Array
 local String = declare.class("java.lang.String")
 local Class = declare.class("java.lang.Class")
 local Method = declare.class("java.lang.reflect.Method")
+local Constructor = declare.class("java.lang.reflect.Constructor")
 
 declare.methods(Class, {
   {Class, "forName", {symbol(String, "className")}},
+  {Array(Constructor), "getConstructors", {symbol(Class, "self")}},
   {Array(Method), "getMethods", {symbol(Class, "self")}},
   {String, "getName", {symbol(Class, "self")}}
+})
+
+declare.methods(Constructor, {
+  {String, "getName", {symbol(Constructor, "self")}},
+  {Array(Class), "getParameterTypes", {symbol(Constructor, "self")}},
 })
 
 declare.methods(Method, {
@@ -26,8 +33,11 @@ declare.methods(Method, {
   {Array(Class), "getParameterTypes", {symbol(Method, "self")}},
 })
 
+--XXX do bootstrap inits here
+
 
 -- Callback functions for building up the description of a reflected class.
+--XXX just directly declare things, rather than build tables.
 
 local stack = {}     -- Things that are being built.
 local subject = nil  -- Top of the stack.
@@ -48,6 +58,7 @@ end
 local function begin_class()
   begin("class")
   subject.methods = {}
+  subject.constructors = {}
 end
 
 local function finish_class()
@@ -64,9 +75,19 @@ local function finish_method()
   table.insert(subject.methods, built)
 end
 
+local function begin_constructor()
+  begin("constructor")
+  subject.params = {}
+end
+
+local function finish_constructor()
+  finish()
+  table.insert(subject.constructors, built)
+end
+
 local function set_name(chars, len)
   subject.name = ffi.string(chars, len)
-  print(subject.name)
+  print(subject.kind, subject.name)
 end
 
 local function set_returns(chars, len)
@@ -109,15 +130,31 @@ local terra visit(class : Class) : {}
   begin_class()
   doname(class, set_name)
 
-  --TODO: Constructors
+  var ctors = class:getConstructors()
+  for i = 0, ctors:len() do
+    visit(ctors:get(i))
+  end
 
   var methods = class:getMethods()
-  var n = methods:len()
-  for i = 0, n do
+  for i = 0, methods:len() do
     visit(methods:get(i))
   end
 
   finish_class()
+
+end
+and
+local terra visit(ctor : Constructor) : {}
+
+  begin_constructor()
+  doname(ctor, set_name)
+
+  var params = ctor:getParameterTypes()
+  for i = 0, params:len() do
+    doname(params:get(0), add_param)
+  end
+
+  finish_constructor()
 
 end
 and
@@ -129,8 +166,7 @@ local terra visit(method : Method) : {}
   doname(method:getReturnType(), set_returns)
 
   var params = method:getParameterTypes()
-  var n = params:len()
-  for i = 0, n do
+  for i = 0, params:len() do
     doname(params:get(0), add_param)
   end
 
@@ -154,4 +190,4 @@ local function reflect(env, name)
   return ret
 end
 
-reflect(declare.makeinit()(), "java.lang.String")
+reflect(declare.makeinit()(), "java.lang.StringBuilder")
