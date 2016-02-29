@@ -4,6 +4,7 @@ local J = require "j"
 local P = {}
 
 local java_names = {}
+java_names[J.void] = "void"
 java_names[J.boolean] = "boolean"
 java_names[J.byte] = "byte"
 java_names[J.char] = "char"
@@ -36,6 +37,7 @@ function P.java_sig(params)
 end
 
 local jvm_names = {}
+jvm_names[J.void] = "V"
 jvm_names[J.boolean] = "Z"
 jvm_names[J.byte] = "B"
 jvm_names[J.char] = "C"
@@ -79,6 +81,7 @@ end
 
 function P.jni_name(typ)
   if not typ then return "Void" end
+  if typ == J.void then return "Void" end
   if typ == J.boolean then return "Boolean" end
   if typ == J.byte then return "Byte" end
   if typ == J.char then return "Char" end

@@ -46,4 +46,7 @@ for k, v in pairs(terralib.includec("jni.h")) do
   end
 end
 
+-- For completeness.
+J.void = terralib.types.unit
+
 return J
