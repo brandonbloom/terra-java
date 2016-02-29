@@ -113,6 +113,10 @@ P.method = terralib.memoize(function(T, ret, name, params)
 
 end)
 
+P.constructor = function(T, params)
+  P.method(T, J.void, "<init>", params)
+end
+
 P.methods = function(T, sigs)
   for _, sig in ipairs(sigs) do
     P.method(T, unpack(sig))

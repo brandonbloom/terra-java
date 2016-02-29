@@ -58,7 +58,7 @@ local function begin_constructor()
 end
 
 local function finish_constructor()
-  --XXX declare.constructor(class, subject.params)
+  declare.constructor(class, subject.params)
 end
 
 local function set_name(chars, len)
