@@ -8,9 +8,6 @@ local ENV = JVM.ENV
 local inits = {}
 
 local function pushinit(q)
-  if not inits then
-    error "Cannot declare JNI element after initialization"
-  end
   table.insert(inits, q)
 end
 
@@ -64,6 +61,19 @@ P.class = terralib.memoize(function(name)
   return T
 
 end)
+
+-- Declares a type with a kind inferred from its name.
+P.type = function(name)
+  if name:sub(1, 1) == "L" then
+    return P.type(name:sub(2, #name - 1))
+  end
+  if name:sub(1, 1) == "[" then
+    return P.Array(P.type(name:sub(2)))
+  end
+  return jtypes.java_primitives[name]
+      or jtypes.jvm_primitives[name]
+      or P.class(name)
+end
 
 local convert = macro(function(T, expr)
   if jtypes.primitive(T) then
@@ -162,12 +172,16 @@ P.Array = terralib.memoize(function(T)
 
 end)
 
+-- Pre-declare primitive array types to fill lookup tables.
+for _, T in pairs(jtypes.java_primitives) do
+  P.Array(T)
+end
+
 --XXX declare_init T.methods.new = ...
 
 --TODO: export JNI_OnLoad when compiling a jnilib, call this.
 function P.makeinit()
   local statements = inits
-  inits = nil
   return terra()
     var [ENV] = JVM.init()
     [statements]

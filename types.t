@@ -43,8 +43,19 @@ jvm_names[J.short] = "S"
 jvm_names[J.int] = "I"
 jvm_names[J.long] = "J"
 jvm_names[J.float] = "F"
-jvm_names[J.double] = "F"
+jvm_names[J.double] = "D"
 jvm_names[J.object] = "LObject;"
+
+P.jvm_primitives = {
+  Z = J.boolean,
+  B = J.byte,
+  C = J.char,
+  S = J.short,
+  I = J.int,
+  J = J.long,
+  F = J.float,
+  D = J.double
+}
 
 function P.jvm_name(typ)
   if not typ then
@@ -79,15 +90,22 @@ function P.jni_name(typ)
   return "Object"
 end
 
+P.java_primitives = {
+  boolean = J.boolean,
+  byte = J.byte,
+  char = J.char,
+  short = J.short,
+  int = J.int,
+  long = J.long,
+  float = J.float,
+  double = J.double
+}
+
 function P.primitive(typ)
-  return typ == J.boolean
-      or typ == J.byte
-      or typ == J.char
-      or typ == J.short
-      or typ == J.int
-      or typ == J.long
-      or typ == J.float
-      or typ == J.double
+  for _, T in pairs(P.java_primitives) do
+    if typ == T then return true end
+  end
+  return false
 end
 
 function P.jni_type(typ)

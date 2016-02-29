@@ -70,12 +70,12 @@ local function set_name(chars, len)
 end
 
 local function set_returns(chars, len)
-  subject.returns = ffi.string(chars, len)
+  subject.returns = declare.type(ffi.string(chars, len))
   print("", "returns", "", subject.returns)
 end
 
 local function add_param(chars, len)
-  local param = ffi.string(chars, len)
+  local param = declare.type(ffi.string(chars, len))
   table.insert(subject.params, param)
   print("", "param", "", param)
 end
