@@ -1,7 +1,6 @@
 local util = require "util"
-local C = require "c"
 local J = require "j"
-local jtypes = require "types"
+local ffi = require "ffi"
 
 local P = {}
 

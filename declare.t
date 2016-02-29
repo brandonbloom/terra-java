@@ -96,7 +96,6 @@ P.method = terralib.memoize(function(T, ret, name, params)
     return `[cast](param)
   end)
 
-  print("??", ret)
   T.methods[name] = terra([self], [params]) : ret
     var [ENV] = self._obj.env
     return convert(ret, target:[call](mid, [args]))
