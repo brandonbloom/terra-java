@@ -94,41 +94,48 @@ local unpackstr = macro(function(s)
   end
 end)
 
+local doname = macro(function(obj, f)
+  return quote
+    do
+      var name = obj:getName()
+      var chars, len = unpackstr(name)
+      f(chars, len)
+    end
+  end
+end)
+
 local terra visit(class : Class) : {}
+
   begin_class()
-  var name = class:getName()
-  var chars, len = unpackstr(name)
-  set_name(chars, len)
+  doname(class, set_name)
+
+  --TODO: Constructors
+
   var methods = class:getMethods()
   var n = methods:len()
   for i = 0, n do
     visit(methods:get(i))
   end
+
   finish_class()
+
 end
 and
 local terra visit(method : Method) : {}
+
   begin_method()
-  do
-    var name = method:getName()
-    var chars, len = unpackstr(name)
-    set_name(chars, len)
-  end
-  do
-    var returns = method:getReturnType()
-    var name = returns:getName()
-    var chars, len = unpackstr(name)
-    set_returns(chars, len)
-  end
+  doname(method, set_name)
+
+  doname(method:getReturnType(), set_returns)
+
   var params = method:getParameterTypes()
   var n = params:len()
   for i = 0, n do
-    var param = params:get(0)
-    var name = param:getName()
-    var chars, len = unpackstr(name)
-    add_param(chars, len)
+    doname(params:get(0), add_param)
   end
+
   finish_method()
+
 end
 
 local terra doreflect([ENV] : JVM.Env, name : rawstring)
