@@ -9,11 +9,6 @@ local struct Env {
   jenv : &J.Env;
 }
 
-local struct Class {
-  env : Env;
-  class : J.class;
-}
-
 local struct Object {
   env : Env;
   this : J.object;
@@ -22,11 +17,6 @@ local struct Object {
 Env.metamethods.__methodmissing = macro(function(name, self, ...)
   local args = terralib.newlist({...})
   return `(@self.jenv).[name](self.jenv, [args])
-end)
-
-Class.metamethods.__methodmissing = macro(function(name, self, ...)
-  local args = {...}
-  return `self.env:[name](self.class, [args])
 end)
 
 Object.metamethods.__methodmissing = macro(function(name, self, ...)
@@ -38,7 +28,6 @@ local ENV = symbol("env")
 
 P.ENV = ENV
 P.Env = Env
-P.Class = Class
 P.Object = Object
 
 --XXX duplicate in declare -- fix up

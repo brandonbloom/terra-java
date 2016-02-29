@@ -75,7 +75,7 @@ P.method = terralib.memoize(function(T, ret, name, params)
 
   local static = (#params == 0 or params[1].displayname ~= "self")
   local self = static and symbol(T, "self") or params[1]
-  local target = static and (`JVM.Class{[ENV], T.class()}) or (`self._obj)
+  local target = static and (`JVM.Object{[ENV], T.class()}) or (`self._obj)
   params = static and params or util.popl(params)
   local sig = jtypes.jvm_sig(ret, params)
   local modifier = static and "Static" or ""
