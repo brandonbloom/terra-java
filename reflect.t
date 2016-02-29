@@ -10,15 +10,20 @@ local ENV = JVM.ENV
 -- Manually declare enough reflection APIs so we can automate declarations.
 
 local Array = declare.Array
-local String = declare.class("java/lang/String")
-local Method = declare.class("java/lang/reflect/Method")
-local Class = declare.class("java/lang/Class")
+local String = declare.class("java.lang.String")
+local Class = declare.class("java.lang.Class")
+local Method = declare.class("java.lang.reflect.Method")
 
-declare.method(Class, Class, "forName", {symbol(String, "className")})
-declare.method(Class, Array(Method), "getMethods", {symbol(Class, "self")})
-declare.method(Class, String, "getName", {symbol(Class, "self")})
+declare.methods(Class, {
+  {Class, "forName", {symbol(String, "className")}},
+  {Array(Method), "getMethods", {symbol(Class, "self")}},
+  {String, "getName", {symbol(Class, "self")}}
+})
 
-declare.method(Method, String, "getName", {symbol(Method, "self")})
+declare.methods(Method, {
+  {String, "getName", {symbol(Method, "self")}},
+  {Class, "getReturnType", {symbol(Method, "self")}},
+})
 
 
 -- Callback functions for building up the description of a reflected class.
@@ -50,6 +55,7 @@ end
 
 local function begin_method()
   begin("method")
+  subject.params = {}
 end
 
 local function finish_method()
@@ -62,6 +68,10 @@ local function set_name(chars, len)
   print(subject.name)
 end
 
+local function set_returns(chars, len)
+  subject.returns = ffi.string(chars, len)
+  print("", subject.returns)
+end
 
 -- Via Java reflection, visit a type and call the above builders.
 
@@ -92,9 +102,17 @@ end
 and
 local terra visit(method : Method) : {}
   begin_method()
-  var name = method:getName()
-  var chars, len = unpackstr(name)
-  set_name(chars, len)
+  do
+    var name = method:getName()
+    var chars, len = unpackstr(name)
+    set_name(chars, len)
+  end
+  do
+    var returns = method:getReturnType()
+    var name = returns:getName()
+    var chars, len = unpackstr(name)
+    set_returns(chars, len)
+  end
   finish_method()
 end
 

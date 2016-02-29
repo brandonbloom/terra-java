@@ -26,13 +26,13 @@ P.class = terralib.memoize(function(name)
     return name
   end
 
-  local java_name = name:gsub("/", ".")
-  local jvm_name = "L" .. name .. ";"
-  jtypes.register(java_name, jvm_name, T)
+  local jni_name = name:gsub("[.]", "/")
+  local jvm_name = "L" .. jni_name .. ";"
+  jtypes.register(name, jvm_name, T)
 
   local clazz = global(J.class)
   pushinit(quote
-    clazz = ENV:FindClass(name)
+    clazz = ENV:FindClass(jni_name)
     if clazz == nil then
       util.fatal(["Class not found: " .. name])
     end
@@ -102,6 +102,12 @@ P.method = terralib.memoize(function(T, ret, name, params)
   end
 
 end)
+
+P.methods = function(T, sigs)
+  for _, sig in ipairs(sigs) do
+    P.method(T, unpack(sig))
+  end
+end
 
 P.Array = terralib.memoize(function(T)
 
