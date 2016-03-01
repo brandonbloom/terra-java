@@ -38,44 +38,44 @@ declare.methods(Method, {
 
 -- Callback functions called during type visitation.
 
-local class = nil
-local subject = nil
+local T = nil
+local member = nil
 
 local function visit_class(chars, len)
-  class = declare.class(ffi.string(chars, len))
+  T = declare.class(ffi.string(chars, len))
 end
 
 local function begin_method(static)
-  subject = {
-    params = static and {} or {symbol(class, "self")}
+  member = {
+    params = static and {} or {symbol(T, "self")}
   }
 end
 
 local function finish_method()
-  declare.method(class, subject.returns, subject.name, subject.params)
+  declare.method(T, member.returns, member.name, member.params)
 end
 
 local function begin_constructor()
-  subject = {params = {}}
+  member = {params = {}}
 end
 
 local function finish_constructor()
-  declare.constructor(class, subject.params)
+  declare.constructor(T, member.params)
 end
 
 local function set_name(chars, len)
-  subject.name = ffi.string(chars, len)
+  member.name = ffi.string(chars, len)
 end
 
 local function set_returns(chars, len)
-  subject.returns = declare.type(ffi.string(chars, len))
+  member.returns = declare.type(ffi.string(chars, len))
 end
 
 local function add_param(chars, len)
   local typ = declare.type(ffi.string(chars, len))
-  local name = "arg" .. #subject.params - 1
+  local name = "arg" .. #member.params - 1
   local param = symbol(typ, name)
-  table.insert(subject.params, param)
+  table.insert(member.params, param)
 end
 
 
@@ -103,16 +103,16 @@ local doname = macro(function(obj, f)
   end
 end)
 
-local terra visit(class : Class) : {}
+local terra visit(T : Class) : {}
 
-  doname(class, visit_class)
+  doname(T, visit_class)
 
-  var ctors = class:getConstructors()
+  var ctors = T:getConstructors()
   for i = 0, ctors:len() do
     visit(ctors:get(i))
   end
 
-  var methods = class:getMethods()
+  var methods = T:getMethods()
   for i = 0, methods:len() do
     visit(methods:get(i))
   end
@@ -154,9 +154,8 @@ end
 
 local terra doreflect(name : rawstring)
   declare.embedded()
-  var jlS = String.this(ENV:NewStringUTF(name))
-  var class = Class.static():forName(jlS)
-  visit(class)
+  var jstr = String.this(ENV:NewStringUTF(name))
+  visit(Class.static():forName(jstr))
 end
 
 
@@ -164,9 +163,9 @@ local P = {}
 
 function P.class(name)
   doreflect(name)
-  local ret = class
-  subject = nil
-  class = nil
+  local ret = T
+  member = nil
+  T = nil
   return ret
 end
 
