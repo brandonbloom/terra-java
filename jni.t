@@ -17,7 +17,7 @@ if ffi.os == "OSX" then
 
 end
 
-local J = {}
+local jni = {}
 for k, v in pairs(terralib.includec("jni.h")) do
   -- Ignore private definitions.
   if k:sub(k:len()) == "_" then
@@ -38,15 +38,15 @@ for k, v in pairs(terralib.includec("jni.h")) do
     while k:sub(1,1) == "_" do
       k = k:sub(2)
     end
-    -- Store in the J table.
-    if J[k] then
+    -- Store in the jni table.
+    if jni[k] then
       error("duplicate key: " .. k)
     end
-    J[k] = v
+    jni[k] = v
   end
 end
 
 -- For completeness.
-J.void = terralib.types.unit
+jni.void = terralib.types.unit
 
-return J
+return jni

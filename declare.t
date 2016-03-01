@@ -1,10 +1,10 @@
 local C = require "c"
-local J = require "j"
-local JVM = require "jvm"
+local jni = require "jni"
+local jvm = require "jvm"
 local jtypes = require "types"
 local util = require "util"
 
-local ENV = JVM.ENV
+local ENV = jvm.ENV
 local inits = {}
 
 local function pushinit(q)
@@ -16,7 +16,7 @@ local P = {}
 P.class = terralib.memoize(function(name)
 
   local struct T {
-    _obj : JVM.Object;
+    _obj : jvm.Object;
   }
 
   T.metamethods.__typename = function(self)
@@ -27,7 +27,7 @@ P.class = terralib.memoize(function(name)
   local jvm_name = "L" .. jni_name .. ";"
   jtypes.register(name, jvm_name, T)
 
-  local clazz = global(J.class)
+  local clazz = global(jni.class)
   pushinit(quote
     clazz = ENV:FindClass(jni_name)
     if clazz == nil then
@@ -37,12 +37,12 @@ P.class = terralib.memoize(function(name)
 
   -- These special methods are all reserved words in Java, so it's OK :-)
 
-  T.methods.this = terra(env : JVM.Env, this : J.object)
-    return T{JVM.Object{env = env, this = this}}
+  T.methods.this = terra(env : jvm.Env, this : jni.object)
+    return T{jvm.Object{env = env, this = this}}
   end
 
-  T.methods.static = terra(env : JVM.Env) : T
-    return T{JVM.Object{env = env, this = nil}}
+  T.methods.static = terra(env : jvm.Env) : T
+    return T{jvm.Object{env = env, this = nil}}
   end
 
   -- Like the ".class" syntax in Java, but with parens.
@@ -51,7 +51,7 @@ P.class = terralib.memoize(function(name)
   end
 
   T.metamethods.__cast = function(from, to, expr)
-    if to == J.object then
+    if to == jni.object then
       return `expr._obj.this
     end
     --TODO: Allow up casts.
@@ -83,17 +83,18 @@ local convert = macro(function(T, expr)
 end)
 
 P.method = terralib.memoize(function(T, ret, name, params)
+  print(name)
 
   local static = (#params == 0 or params[1].displayname ~= "self")
   local self = static and symbol(T, "self") or params[1]
-  local target = static and (`JVM.Object{[ENV], T.class()}) or (`self._obj)
+  local target = static and (`jvm.Object{[ENV], T.class()}) or (`self._obj)
   params = static and params or util.popl(params)
   local sig = jtypes.jvm_sig(ret, params)
   local modifier = static and "Static" or ""
   local get = "Get" .. modifier .. "MethodID"
   local call = "Call" .. modifier .. jtypes.jni_name(ret) .. "Method"
 
-  local mid = global(J.methodID)
+  local mid = global(jni.methodID)
   pushinit(quote
     mid = ENV:[get](T.class(), name, sig)
     if mid == nil then
@@ -114,7 +115,7 @@ P.method = terralib.memoize(function(T, ret, name, params)
 end)
 
 P.constructor = function(T, params)
-  P.method(T, J.void, "<init>", params)
+  P.method(T, jni.void, "<init>", params)
   --XXX create a T.new(...) method
 end
 
@@ -127,7 +128,7 @@ end
 P.Array = terralib.memoize(function(T)
 
   local struct A {
-    _obj : JVM.Object;
+    _obj : jvm.Object;
   }
 
   A.metamethods.__typename = function(self)
@@ -138,26 +139,26 @@ P.Array = terralib.memoize(function(T)
   local jvm_name = "[" .. jtypes.jvm_name(T)
   jtypes.register(java_name, jvm_name, A)
 
-  A.methods.this = terra(env : JVM.Env, this : J.object)
-    return A{JVM.Object{env = env, this = this}}
+  A.methods.this = terra(env : jvm.Env, this : jni.object)
+    return A{jvm.Object{env = env, this = this}}
   end
 
   -- TODO array construction
   -- jarray (JNICALL *NewObjectArray)
   --   (JNIEnv *env, jsize len, jclass clazz, jobject init);
 
-  A.methods.len = terra(self : A) : J.int
+  A.methods.len = terra(self : A) : jni.int
     return self._obj:GetArrayLength()
   end
 
   local jnitype = jtypes.jni_name(T)
 
-  A.methods.get = terra(self : A, i : J.int) : T
+  A.methods.get = terra(self : A, i : jni.int) : T
     var [ENV] = self._obj.env
     return convert(T, self._obj:["Get" .. jnitype .. "ArrayElement"](i))
   end
 
-  A.methods.set = terra(self : A, i : J.int, v : T)
+  A.methods.set = terra(self : A, i : jni.int, v : T)
     self._obj:["Set" .. jnitype .. "ArrayElement"](i, v)
   end
 
@@ -188,7 +189,7 @@ function P.makeinit()
   --XXX set inits to nil - except when called during bootstrap in reflect
   --XXX ^^^ consider alternative approachs to untangle jvm/declare/reflect.
   return terra()
-    var [ENV] = JVM.init()
+    var [ENV] = jvm.init()
     [statements]
     return ENV
   end

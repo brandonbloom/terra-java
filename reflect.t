@@ -1,10 +1,8 @@
 local ffi = require "ffi"
-local C = require "c"
-local J = require "j"
-local JVM = require "jvm"
+local jvm = require "jvm"
 local declare = require "declare"
 
-local ENV = JVM.ENV
+local ENV = jvm.ENV
 
 
 -- Manually declare enough reflection APIs so we can automate declarations.
@@ -147,7 +145,7 @@ local terra visit(method : Method) : {}
 
 end
 
-local terra doreflect([ENV] : JVM.Env, name : rawstring)
+local terra doreflect([ENV] : jvm.Env, name : rawstring)
   var jlS = String.this(ENV, ENV:NewStringUTF(name))
   var class = Class.static(ENV):forName(jlS)
   visit(class)
@@ -161,4 +159,5 @@ local function reflect(env, name)
   class = nil
 end
 
-reflect(declare.makeinit()(), "java.lang.StringBuilder")
+--XXX use the singleton compiler JVM env
+reflect(declare.makeinit()(), "java.lang.Math")
