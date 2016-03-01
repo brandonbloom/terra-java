@@ -17,6 +17,11 @@ code without a runtime Lua dependency, Terra-Java can generate vanilla
 object files ready for loading in to your own JVM process.
 
 
+## Status
+
+This project is a work-in-progress. Nothing really works as advertised yet.
+
+
 ## Getting Started
 
 Try the examples below, then see [the guide](./doc/guide.md).
