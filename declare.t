@@ -4,14 +4,16 @@ local jvm = require "jvm"
 local jtypes = require "types"
 local util = require "util"
 
-local ENV = jvm.ENV
+local P = {}
+
+local ENV = symbol("env")
+P.ENV = ENV
+
 local inits = {}
 
 local function pushinit(q)
   table.insert(inits, q)
 end
-
-local P = {}
 
 P.class = terralib.memoize(function(name)
 
@@ -189,10 +191,13 @@ function P.makeinit()
   --XXX set inits to nil - except when called during bootstrap in reflect
   --XXX ^^^ consider alternative approachs to untangle jvm/declare/reflect.
   return terra()
-    var [ENV] = jvm.init()
+    var [ENV] = jvm.env
     [statements]
-    return ENV
   end
+end
+
+function P.bind()
+  P.makeinit()()
 end
 
 return P

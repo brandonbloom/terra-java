@@ -2,8 +2,6 @@ local util = require "util"
 local jni = require "jni"
 local ffi = require "ffi"
 
-local P = {}
-
 local struct Env {
   jni : &jni.Env;
 }
@@ -23,13 +21,7 @@ Object.metamethods.__methodmissing = macro(function(name, self, ...)
   return `self.env:[name](self.this, [args])
 end)
 
-local ENV = symbol("env")
-
-P.ENV = ENV
-P.Env = Env
-P.Object = Object
-
-terra P.init() : Env
+local terra init() : Env
 
   var args : jni.VMInitArgs
   var options : jni.VMOption[0]
@@ -41,9 +33,9 @@ terra P.init() : Env
     util.fatal("error getting default JVM initialization arguments: %d", res)
   end
 
-  var jvm : &jni.VM
+  var vm : &jni.VM
   var env : &jni.Env
-  res = jni.CreateJavaVM(&jvm, [&&opaque](&env), &args)
+  res = jni.CreateJavaVM(&vm, [&&opaque](&env), &args)
   if res < 0 then
     util.fatal("error creating JVM: %d", res)
   end
@@ -52,4 +44,8 @@ terra P.init() : Env
 
 end
 
-return P
+return {
+  Env = Env,
+  Object = Object,
+  env = init(),
+}
