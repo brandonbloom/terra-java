@@ -9,3 +9,11 @@ terra pi()
 end
 
 print(pi())
+
+
+terra right()
+  var rect = J.new(Rectangle, 20, 50, 100, 200)
+  return rect:x() + rect:width()
+end
+
+ex()
