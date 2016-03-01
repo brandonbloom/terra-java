@@ -9,6 +9,7 @@ local P = {}
 local ENV = symbol("env")
 P.ENV = ENV
 
+--XXX Eliminate duplicate inits after reflection bootstrap.
 local inits = {}
 
 local function pushinit(q)
@@ -90,7 +91,7 @@ local convert = macro(function(T, expr)
   return `T.this(expr)
 end)
 
-P.method = terralib.memoize(function(T, ret, name, params)
+function P.method(T, ret, name, params)
 
   local static = (#params == 0 or params[1].displayname ~= "self")
   local self = static and symbol(T, "self") or params[1]
@@ -98,12 +99,12 @@ P.method = terralib.memoize(function(T, ret, name, params)
   params = static and params or util.popl(params)
   local sig = jtypes.jvm_sig(ret, params)
   local modifier = static and "Static" or ""
-  local get = "Get" .. modifier .. "MethodID"
+  local find = "Get" .. modifier .. "MethodID"
   local call = "Call" .. modifier .. jtypes.jni_name(ret) .. "Method"
 
   local mid = global(jni.methodID)
   pushinit(quote
-    mid = ENV:[get](T.class(), name, sig)
+    mid = ENV:[find](T.class(), name, sig)
     if mid == nil then
       util.fatal([
         ("Method not found: %s %s.%s%s\n"):format(T, modifier, name, sig)
@@ -127,17 +128,45 @@ P.method = terralib.memoize(function(T, ret, name, params)
     T.methods[name] = fn
   end
 
-end)
-
-P.constructor = function(T, params)
-  P.method(T, jni.void, "<init>", params)
-  --XXX create a T.new(...) method
 end
 
 P.methods = function(T, sigs)
   for _, sig in ipairs(sigs) do
     P.method(T, unpack(sig))
   end
+end
+
+P.constructor = function(T, params)
+  P.method(T, jni.void, "<init>", params)
+  --XXX create a T.new(...) method
+end
+
+P.field = function(T, static, typ, name)
+
+  local sig = jtypes.jvm_name(typ)
+  local modifier = static and "Static" or ""
+  local find = "Get" .. modifier .. "FieldID"
+  local get = "Get" .. modifier .. jtypes.jni_name(typ) .. "Field"
+  local set = "Set" .. modifier .. jtypes.jni_name(typ) .. "Field"
+
+  local fid = global(jni.fieldID)
+  pushinit(quote
+    fid = ENV:[find](T.class(), name, sig)
+    if fid == nil then
+      util.fatal([
+        ("Field not found: %s %s.%s%s\n"):format(T, modifier, name, sig)
+      ])
+    end
+  end)
+
+  T.methods[name] = terra(self : T)
+    return self._obj:[get](fid)
+  end
+
+  T.methods[name]:adddefinition(terra(self : T, value : typ)
+    self._obj:[set](fid, value)
+  end)
+
 end
 
 P.Array = terralib.memoize(function(T)

@@ -1,5 +1,4 @@
 local ffi = require "ffi"
-local jni = require "terra-java/jni"
 local jvm = require "terra-java/jvm"
 local declare = require "terra-java/declare"
 
@@ -11,12 +10,15 @@ local ENV = declare.ENV
 local Array = declare.Array
 local String = declare.class("java.lang.String")
 local Class = declare.class("java.lang.Class")
+local Field = declare.class("java.lang.reflect.Field")
 local Method = declare.class("java.lang.reflect.Method")
 local Constructor = declare.class("java.lang.reflect.Constructor")
+local Modifier = declare.class("java.lang.reflect.Modifier")
 
 declare.methods(Class, {
   {Class, "forName", {symbol(String, "className")}},
   {Array(Constructor), "getConstructors", {symbol(Class, "self")}},
+  {Array(Field), "getFields", {symbol(Class, "self")}},
   {Array(Method), "getMethods", {symbol(Class, "self")}},
   {String, "getName", {symbol(Class, "self")}}
 })
@@ -28,12 +30,20 @@ declare.methods(Constructor, {
   {Array(Class), "getParameterTypes", {symbol(Constructor, "self")}},
 })
 
+declare.methods(Field, {
+  {String, "getName", {symbol(Field, "self")}},
+  {Class, "getType", {symbol(Field, "self")}},
+  {int, "getModifiers", {symbol(Field, "self")}},
+})
+
 declare.methods(Method, {
   {String, "getName", {symbol(Method, "self")}},
   {Class, "getReturnType", {symbol(Method, "self")}},
   {Array(Class), "getParameterTypes", {symbol(Method, "self")}},
-  {jni.int, "getModifiers", {symbol(Method, "self")}},
+  {int, "getModifiers", {symbol(Method, "self")}},
 })
+
+declare.field(Modifier, true, int, "STATIC")
 
 
 -- Callback functions called during type visitation.
@@ -45,10 +55,16 @@ local function visit_class(chars, len)
   T = declare.class(ffi.string(chars, len))
 end
 
+local function begin_field(static)
+  member = { static = static }
+end
+
+local function finish_field()
+  declare.field(T, member.static, member.returns, member.name)
+end
+
 local function begin_method(static)
-  member = {
-    params = static and {} or {symbol(T, "self")}
-  }
+  member = { params = static and {} or {symbol(T, "self")} }
 end
 
 local function finish_method()
@@ -81,6 +97,11 @@ end
 
 -- Via Java reflection, visit a type with above callbacks.
 
+local STATIC = (terra()
+  declare.embedded()
+  return Modifier.static():STATIC()
+end)()
+
 --TODO: belongs elsewhere?
 local unpackstr = macro(function(s)
   return quote
@@ -112,6 +133,11 @@ local terra visit(T : Class) : {}
     visit(ctors:get(i))
   end
 
+  var fields = T:getFields()
+  for i = 0, fields:len() do
+    visit(fields:get(i))
+  end
+
   var methods = T:getMethods()
   for i = 0, methods:len() do
     visit(methods:get(i))
@@ -133,10 +159,25 @@ local terra visit(ctor : Constructor) : {}
 
 end
 and
+local terra visit(field : Field) : {}
+
+  var modifiers = field:getModifiers()
+  var static = (modifiers and STATIC) ~= 0
+  print("static?", modifiers, static)
+
+  begin_field(static)
+  doname(field, set_name)
+
+  doname(field:getType(), set_returns)
+
+  finish_field()
+
+end
+and
 local terra visit(method : Method) : {}
 
   var modifiers = method:getModifiers()
-  var static = (modifiers and 8) ~= 0 --XXX 8 is static, use real constant.
+  var static = (modifiers and STATIC) ~= 0
 
   begin_method(static)
   doname(method, set_name)
