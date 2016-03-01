@@ -17,9 +17,9 @@ value; one argument sets the field value.
 
 ```lua
 local Rectangle = J.package("java.awt").Rectangle
-terra move(rect : Rectangle, x : int, y : int)
-  rect:x(rect:x() + amount)
-  rect:y(rect:y() + amount)
+terra move(rect : Rectangle, dx : int, dy : int)
+  rect:x(rect:x() + dx)
+  rect:y(rect:y() + dy)
 end
 ```
 
