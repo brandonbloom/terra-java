@@ -31,7 +31,7 @@ declare.methods(Method, {
   {Array(Class), "getParameterTypes", {symbol(Method, "self")}},
 })
 
---XXX do bootstrap inits here
+declare.bind()
 
 
 -- Callback functions called during type visitation.
@@ -153,12 +153,22 @@ local terra doreflect(name : rawstring)
 end
 
 
--- Automatically declares a class and all members via reflection.
-local function reflect(name)
+local P = {}
+
+function P.class(name)
   doreflect(name)
   subject = nil
   class = nil
 end
 
-declare.bind()
-reflect("java.lang.Math")
+function P.package(name)
+  local mt = {
+    name = name,
+    __index = function(tbl, key)
+      return P.class(name .. "." .. key)
+    end,
+  }
+  return setmetatable({}, mt)
+end
+
+return P
