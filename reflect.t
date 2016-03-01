@@ -1,4 +1,5 @@
 local ffi = require "ffi"
+local jni = require "jni"
 local jvm = require "jvm"
 local declare = require "declare"
 
@@ -20,6 +21,8 @@ declare.methods(Class, {
   {String, "getName", {symbol(Class, "self")}}
 })
 
+--TODO: Consider inheritence when declaring these.
+
 declare.methods(Constructor, {
   {String, "getName", {symbol(Constructor, "self")}},
   {Array(Class), "getParameterTypes", {symbol(Constructor, "self")}},
@@ -29,9 +32,8 @@ declare.methods(Method, {
   {String, "getName", {symbol(Method, "self")}},
   {Class, "getReturnType", {symbol(Method, "self")}},
   {Array(Class), "getParameterTypes", {symbol(Method, "self")}},
+  {jni.int, "getModifiers", {symbol(Method, "self")}},
 })
-
-declare.bind()
 
 
 -- Callback functions called during type visitation.
@@ -43,8 +45,10 @@ local function visit_class(chars, len)
   class = declare.class(ffi.string(chars, len))
 end
 
-local function begin_method()
-  subject = {params = {symbol(class, "self")}}
+local function begin_method(static)
+  subject = {
+    params = static and {} or {symbol(class, "self")}
+  }
 end
 
 local function finish_method()
@@ -131,14 +135,17 @@ end
 and
 local terra visit(method : Method) : {}
 
-  begin_method()
+  var modifiers = method:getModifiers()
+  var static = (modifiers and 8) ~= 0 --XXX 8 is static, use real constant.
+
+  begin_method(static)
   doname(method, set_name)
 
   doname(method:getReturnType(), set_returns)
 
   var params = method:getParameterTypes()
   for i = 0, params:len() do
-    doname(params:get(0), add_param)
+    doname(params:get(i), add_param)
   end
 
   finish_method()
@@ -157,8 +164,10 @@ local P = {}
 
 function P.class(name)
   doreflect(name)
+  local ret = class
   subject = nil
   class = nil
+  return ret
 end
 
 function P.package(name)

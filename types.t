@@ -49,6 +49,7 @@ jvm_names[jni.double] = "D"
 jvm_names[jni.object] = "LObject;"
 
 P.jvm_primitives = {
+  V = jni.void,
   Z = jni.boolean,
   B = jni.byte,
   C = jni.char,
@@ -94,6 +95,7 @@ function P.jni_name(typ)
 end
 
 P.java_primitives = {
+  void = jni.void,
   boolean = jni.boolean,
   byte = jni.byte,
   char = jni.char,

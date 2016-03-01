@@ -12,6 +12,12 @@ P.ENV = ENV
 local inits = {}
 
 local function pushinit(q)
+  -- Execute immediately.
+  (terra()
+    var [ENV] = jvm.env
+    [q]
+  end)()
+  -- And save for later.
   table.insert(inits, q)
 end
 
@@ -78,14 +84,13 @@ P.type = function(name)
 end
 
 local convert = macro(function(T, expr)
-  if jtypes.primitive(T) then
+  if jtypes.primitive(T:astype()) then
     return expr
   end
   return `T.this(ENV, expr)
 end)
 
 P.method = terralib.memoize(function(T, ret, name, params)
-  print(name)
 
   local static = (#params == 0 or params[1].displayname ~= "self")
   local self = static and symbol(T, "self") or params[1]
@@ -100,7 +105,9 @@ P.method = terralib.memoize(function(T, ret, name, params)
   pushinit(quote
     mid = ENV:[get](T.class(), name, sig)
     if mid == nil then
-      util.fatal([("Method not found: %s.%s%s"):format(T, name, sig)])
+      util.fatal([
+        ("Method not found: %s %s.%s%s\n"):format(T, modifier, name, sig)
+      ])
     end
   end)
 
@@ -187,17 +194,10 @@ end
 
 --TODO: export JNI_OnLoad when compiling a jnilib, call this.
 function P.makeinit()
-  local statements = inits
-  --XXX set inits to nil - except when called during bootstrap in reflect
-  --XXX ^^^ consider alternative approachs to untangle jvm/declare/reflect.
   return terra()
     var [ENV] = jvm.env
-    [statements]
+    [inits]
   end
-end
-
-function P.bind()
-  P.makeinit()()
 end
 
 return P
