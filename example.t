@@ -16,4 +16,4 @@ terra right()
   return rect:x() + rect:width()
 end
 
-ex()
+print(ex())

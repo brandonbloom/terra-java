@@ -53,6 +53,11 @@ print(pi())
 ### Building Native Extensions
 
 ```lua
+local J = require "terra-java"
+local C = terralib.includec("stdio.h")
+
+C.printf("hello\n") --TODO: put this in an extension class
+
 --TODO: save an object file
 ```
 
