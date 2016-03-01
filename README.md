@@ -19,7 +19,7 @@ object files ready for loading in to your own JVM process.
 
 ## Getting Started
 
-Try the examples below, then see [the guide](./guide.md).
+Try the examples below, then see [the guide](./doc/guide.md).
 
 ### Configuration
 
