@@ -1,7 +1,7 @@
-local jvm = require "terra-java/jvm"
+local declare = require "terra-java/declare"
 local reflect = require "terra-java/reflect"
 
 return {
-  env = jvm.env,
+  embedded = declare.embedded,
   package = reflect.package
 }

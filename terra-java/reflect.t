@@ -153,9 +153,9 @@ local terra visit(method : Method) : {}
 end
 
 local terra doreflect(name : rawstring)
-  var [ENV] = jvm.env
-  var jlS = String.this(ENV, ENV:NewStringUTF(name))
-  var class = Class.static(ENV):forName(jlS)
+  declare.embedded()
+  var jlS = String.this(ENV:NewStringUTF(name))
+  var class = Class.static():forName(jlS)
   visit(class)
 end
 

@@ -45,13 +45,13 @@ P.class = terralib.memoize(function(name)
 
   -- These special methods are all reserved words in Java, so it's OK :-)
 
-  T.methods.this = terra(env : jvm.Env, this : jni.object)
-    return T{jvm.Object{env = env, this = this}}
-  end
+  T.methods.this = macro(function(this)
+    return `T{jvm.Object{env = ENV, this = this}}
+  end)
 
-  T.methods.static = terra(env : jvm.Env) : T
-    return T{jvm.Object{env = env, this = nil}}
-  end
+  T.methods.static = macro(function()
+    return `T{jvm.Object{env = ENV, this = nil}}
+  end)
 
   -- Like the ".class" syntax in Java, but with parens.
   T.methods.class = terra()
@@ -87,7 +87,7 @@ local convert = macro(function(T, expr)
   if jtypes.primitive(T:astype()) then
     return expr
   end
-  return `T.this(ENV, expr)
+  return `T.this(expr)
 end)
 
 P.method = terralib.memoize(function(T, ret, name, params)
@@ -148,9 +148,9 @@ P.Array = terralib.memoize(function(T)
   local jvm_name = "[" .. jtypes.jvm_name(T)
   jtypes.register(java_name, jvm_name, A)
 
-  A.methods.this = terra(env : jvm.Env, this : jni.object)
-    return A{jvm.Object{env = env, this = this}}
-  end
+  A.methods.this = macro(function(this)
+    return `A{jvm.Object{env = ENV, this = this}}
+  end)
 
   -- TODO array construction
   -- jarray (JNICALL *NewObjectArray)
@@ -199,5 +199,9 @@ function P.makeinit()
     [inits]
   end
 end
+
+P.embedded = macro(function()
+  return quote var [ENV] = jvm.env end
+end)
 
 return P

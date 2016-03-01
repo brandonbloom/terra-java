@@ -36,7 +36,8 @@ local J = require "terra-java"
 local Math = J.package("java.lang").Math
 
 terra pi()
-  return Math.static(J.env):toRadians(180)
+  J.embedded()
+  return Math.static():toRadians(180)
 end
 
 print(pi())
