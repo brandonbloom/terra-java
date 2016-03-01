@@ -1,8 +1,8 @@
-local C = require "c"
-local jni = require "jni"
-local jvm = require "jvm"
-local jtypes = require "types"
-local util = require "util"
+local C = require "terra-java/c"
+local jni = require "terra-java/jni"
+local jvm = require "terra-java/jvm"
+local jtypes = require "terra-java/types"
+local util = require "terra-java/util"
 
 local P = {}
 

@@ -1,4 +1,4 @@
-local ffi = require("ffi")
+local ffi = require "ffi"
 
 local JDK_HOME = os.getenv("JDK_HOME")
 if not JDK_HOME then

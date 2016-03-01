@@ -19,15 +19,7 @@ object files ready for loading in to your own JVM process.
 
 ## Getting Started
 
-Try the example below, then see the [guide](./guide.md).
-
-### Example Extension
-
-```lua
---TODO: Include some C code.
---TODO: Import some Java classes.
---TODO: Define a class with a native methods.
-```
+Try the examples below, then see [the guide](./guide.md).
 
 ### Configuration
 
@@ -36,17 +28,23 @@ The following environment variables should be set:
 - `INCLUDE_PATH`: Used by Terra to find standard C headers.
 - `JDK_HOME`: Terra-Java uses this to find Java headers and libjvm.
 
-### Running With Embedded JVM
+### Using the Embedded JVM
 
 ```lua
---TODO: launch a JVM
+local J = require "terra-java"
+
+local Math = J.package("java.lang").Math
+
+terra pi()
+  return Math.static(J.env):toRadians(180)
+end
+
+print(pi())
+
+--TODO: Show more interesting examples.
 ```
 
-```bash
-#TODO: run above terra
-```
-
-### Building Native Libraries
+### Building Native Extensions
 
 ```lua
 --TODO: save an object file

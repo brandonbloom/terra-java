@@ -1,6 +1,6 @@
 local P = {}
 
-local C = require "c"
+local C = require "terra-java/c"
 
 P.fatal = macro(function(fmt, ...)
   fmt = "fatal: " .. fmt:asvalue() .. "\n"

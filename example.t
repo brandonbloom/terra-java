@@ -1,18 +1,10 @@
-
-local reflect = require "reflect"
-local lang = reflect.package("java.lang")
-
-
-print(lang.Math)
-
-
---[[
-
+local J = require "terra-java"
 local C = terralib.includec("stdio.h")
-local J = require("terra-java")
+
 local Math = J.package("java.lang").Math
 
+terra pi()
+  return Math.static(J.env):toRadians(180)
+end
 
-var pi = Math.toRadians(180)
-
---]]
+print(pi())

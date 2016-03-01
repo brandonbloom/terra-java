@@ -1,5 +1,5 @@
-local util = require "util"
-local jni = require "jni"
+local util = require "terra-java/util"
+local jni = require "terra-java/jni"
 
 local P = {}
 

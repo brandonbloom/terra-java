@@ -1,6 +1,6 @@
-local util = require "util"
-local jni = require "jni"
 local ffi = require "ffi"
+local util = require "terra-java/util"
+local jni = require "terra-java/jni"
 
 local struct Env {
   jni : &jni.Env;

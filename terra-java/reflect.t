@@ -1,7 +1,7 @@
 local ffi = require "ffi"
-local jni = require "jni"
-local jvm = require "jvm"
-local declare = require "declare"
+local jni = require "terra-java/jni"
+local jvm = require "terra-java/jvm"
+local declare = require "terra-java/declare"
 
 local ENV = declare.ENV
 
