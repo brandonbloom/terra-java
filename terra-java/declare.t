@@ -116,9 +116,15 @@ P.method = terralib.memoize(function(T, ret, name, params)
     return `[cast](param)
   end)
 
-  T.methods[name] = terra([self], [params]) : ret
+  local fn = terra([self], [params]) : ret
     var [ENV] = self._obj.env
     return convert(ret, target:[call](mid, [args]))
+  end
+
+  if T.methods[name] then
+    T.methods[name]:adddefinition(fn)
+  else
+    T.methods[name] = fn
   end
 
 end)
