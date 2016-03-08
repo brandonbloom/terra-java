@@ -131,7 +131,7 @@ function P.method(T, ret, name, params)
   end
 
   if T.methods[name] then
-    T.methods[name]:adddefinition(fn)
+    T.methods[name]:adddefinition(fn:getdefinitions()[1])
   else
     T.methods[name] = fn
   end
@@ -170,9 +170,10 @@ P.field = function(T, static, typ, name)
     return self._obj:[get](fid)
   end
 
-  T.methods[name]:adddefinition(terra(self : T, value : typ)
+  local tmp = terra(self : T, value : typ)
     self._obj:[set](fid, value)
-  end)
+  end
+  T.methods[name]:adddefinition(tmp:getdefinitions()[1])
 
 end
 
