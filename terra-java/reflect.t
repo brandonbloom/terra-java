@@ -28,6 +28,7 @@ declare.methods(Class, {
 declare.methods(Constructor, {
   {String, "getName", {symbol(Constructor, "self")}},
   {Array(Class), "getParameterTypes", {symbol(Constructor, "self")}},
+  {int, "getModifiers", {symbol(Constructor, "self")}},
 })
 
 declare.methods(Field, {
@@ -71,8 +72,8 @@ local function finish_method()
   declare.method(T, member.returns, member.name, member.params)
 end
 
-local function begin_constructor()
-  member = {params = {}}
+local function begin_constructor(static)
+  member = { params = static and {} or {symbol(T, "self")} }
 end
 
 local function finish_constructor()
@@ -147,8 +148,10 @@ end
 and
 local terra visit(ctor : Constructor) : {}
 
-  begin_constructor()
-  doname(ctor, set_name)
+  var modifiers = ctor:getModifiers()
+  var static = (modifiers and STATIC) ~= 0
+
+  begin_constructor(static)
 
   var params = ctor:getParameterTypes()
   for i = 0, params:len() do
@@ -163,7 +166,6 @@ local terra visit(field : Field) : {}
 
   var modifiers = field:getModifiers()
   var static = (modifiers and STATIC) ~= 0
-  print("static?", modifiers, static)
 
   begin_field(static)
   doname(field, set_name)

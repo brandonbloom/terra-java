@@ -93,14 +93,17 @@ end)
 
 function P.method(T, ret, name, params)
 
+  local ctor = (name == "<init>")
   local static = (#params == 0 or params[1].displayname ~= "self")
   local self = static and symbol(T, "self") or params[1]
-  local target = static and (`jvm.Object{[ENV], T.class()}) or (`self._obj)
+  local target = (ctor or static)
+                 and (`jvm.Object{[ENV], T.class()}) or (`self._obj)
   params = static and params or util.popl(params)
   local sig = jtypes.jvm_sig(ret, params)
   local modifier = static and "Static" or ""
   local find = "Get" .. modifier .. "MethodID"
-  local call = "Call" .. modifier .. jtypes.jni_name(ret) .. "Method"
+  local call = ctor and "NewObject"
+               or "Call" .. modifier .. jtypes.jni_name(ret) .. "Method"
 
   local mid = global(jni.methodID)
   pushinit(quote
@@ -116,6 +119,11 @@ function P.method(T, ret, name, params)
     local cast = jtypes.jni_type(param.type)
     return `[cast](param)
   end)
+
+  if ctor then
+    name = "new"
+    ret = T
+  end
 
   local fn = terra([self], [params]) : ret
     var [ENV] = self._obj.env
@@ -138,7 +146,6 @@ end
 
 P.constructor = function(T, params)
   P.method(T, jni.void, "<init>", params)
-  --XXX create a T.new(...) method
 end
 
 P.field = function(T, static, typ, name)
@@ -237,6 +244,11 @@ end
 
 P.embedded = macro(function()
   return quote var [ENV] = jvm.env end
+end)
+
+P.new = macro(function(class, ...)
+  local args = {...}
+  return `class.static():new(args)
 end)
 
 return P

@@ -11,9 +11,12 @@ end
 print(pi())
 
 
-terra right()
-  var rect = J.new(Rectangle, 20, 50, 100, 200)
-  return rect:x() + rect:width()
+local util = J.package("java.util")
+
+terra minute()
+  J.embedded()
+  var now = J.new(util.Date)
+  return now:getMinutes()
 end
 
-print(ex())
+print(minute())
