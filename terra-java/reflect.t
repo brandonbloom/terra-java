@@ -204,13 +204,13 @@ end
 
 local P = {}
 
-function P.class(name)
+P.class = terralib.memoize(function(name)
   doreflect(name)
   local ret = T
   member = nil
   T = nil
   return ret
-end
+end)
 
 function P.package(name)
   local mt = {
