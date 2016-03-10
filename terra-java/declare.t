@@ -9,17 +9,13 @@ local P = {}
 local ENV = symbol("env")
 P.ENV = ENV
 
---XXX Eliminate duplicate inits after reflection bootstrap.
 local inits = {}
 
-local function pushinit(q)
-  -- Execute immediately.
-  (terra()
-    var [ENV] = jvm.env
-    [q]
-  end)()
-  -- And save for later.
-  table.insert(inits, q)
+local function collectinits(dst, src)
+  table.insert(dst, src.class)
+  for _, v in pairs(src.members) do
+    table.insert(dst, v)
+  end
 end
 
 P.class = terralib.memoize(function(name)
@@ -37,12 +33,15 @@ P.class = terralib.memoize(function(name)
   jtypes.register(name, jvm_name, T)
 
   local clazz = global(jni.class)
-  pushinit(quote
-    clazz = ENV:FindClass(jni_name)
-    if clazz == nil then
-      util.fatal(["Class not found: " .. name])
-    end
-  end)
+  inits[T] = {
+    class = quote
+      clazz = ENV:FindClass(jni_name)
+      if clazz == nil then
+        util.fatal(["Class not found: " .. name])
+      end
+    end,
+    members = {},
+  }
 
   -- These special methods are all reserved words in Java, so it's OK :-)
 
@@ -64,7 +63,17 @@ P.class = terralib.memoize(function(name)
       return `expr._obj.this
     end
     --TODO: Allow up casts.
+    --TODO: Handle nil.
     util.errorf("Unable to cast %s", name)
+  end
+
+  function T.metamethods:__staticinitialize()
+    local cinits = {}
+    collectinits(cinits, inits[T])
+    (terra()
+      var [ENV] = jvm.env
+      [cinits]
+    end)()
   end
 
   return T
@@ -106,14 +115,14 @@ function P.method(T, ret, name, params)
                or "Call" .. modifier .. jtypes.jni_name(ret) .. "Method"
 
   local mid = global(jni.methodID)
-  pushinit(quote
+  inits[T].members[name .. sig] = quote
     mid = ENV:[find](T.class(), name, sig)
     if mid == nil then
       util.fatal([
         ("Method not found: %s %s.%s%s\n"):format(T, modifier, name, sig)
       ])
     end
-  end)
+  end
 
   local args = terralib.newlist(params):map(function(param)
     local cast = jtypes.jni_type(param.type)
@@ -157,14 +166,14 @@ P.field = function(T, static, typ, name)
   local set = "Set" .. modifier .. jtypes.jni_name(typ) .. "Field"
 
   local fid = global(jni.fieldID)
-  pushinit(quote
+  inits[T].members[name .. " " .. sig] = quote
     fid = ENV:[find](T.class(), name, sig)
     if fid == nil then
       util.fatal([
         ("Field not found: %s %s.%s%s\n"):format(T, modifier, name, sig)
       ])
     end
-  end)
+  end
 
   T.methods[name] = terra(self : T)
     return self._obj:[get](fid)
@@ -235,11 +244,15 @@ for _, T in pairs(jtypes.java_primitives) do
   P.Array(T)
 end
 
---TODO: export JNI_OnLoad when compiling a jnilib, call this.
-function P.makeinit()
+--XXX: use me by exporting JNI_OnLoad when compiling a jnilib
+function allinits()
+  local xs = {}
+  for _, v in pairs(inits) do
+    collectinits(xs, v)
+  end
   return terra()
     var [ENV] = jvm.env
-    [inits]
+    [xs]
   end
 end
 

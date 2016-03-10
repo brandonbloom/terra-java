@@ -20,3 +20,6 @@ terra minute()
 end
 
 print(minute())
+
+
+local Foo = J.class("example.Foo")
