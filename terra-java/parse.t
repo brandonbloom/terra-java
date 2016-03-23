@@ -30,8 +30,8 @@ end
 
 local struct Header {
   magic : uint32;
-  major_version : uint16;
   minor_version : uint16;
+  major_version : uint16;
 }
 
 local VarArr = terralib.memoize(function(N, T)
