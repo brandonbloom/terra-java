@@ -181,19 +181,18 @@ terra read(x : &ClassFile) : {}
     read(&tag)
     C.printf("const %d has tag %d\n", i, tag)
 
-    if tag == 1 then read(&const.utf8) -- Utf8
-    elseif tag == 3 or tag == 4 then read(&const.i32) -- Integer, Float
-    elseif tag == 5 or tag == 6 then  -- Long, Double
-      read(&const.i64)
-      i = i + 1
-    elseif tag == 7 then read(&const.class) -- Class
-    elseif tag == 8 then read(&const.string) -- String
-    -- Fieldref, MethodRef, InterfaceMethodRef
+    if tag == 1 then read(&const.utf8)
+    elseif tag == 3 or tag == 4 then read(&const.i32) -- Also Float
+    elseif tag == 5 or tag == 6 then
+      read(&const.i64) -- Also Double
+      i = i + 1 -- Section 4.4.5 - "a poor choice".
+    elseif tag == 7 then read(&const.class)
+    elseif tag == 8 then read(&const.string)
     elseif tag == 9 or tag == 10 or tag == 11 then read(&const.member)
-    elseif tag == 12 then read(&const.name_and_type) -- NameAndType
-    elseif tag == 15 then read(&const.handle) -- MethodHandle
-    elseif tag == 16 then read(&const.type) -- MethodType
-    elseif tag == 18 then read(&const.invoke_dynamic) -- InvokeDynamic
+    elseif tag == 12 then read(&const.name_and_type)
+    elseif tag == 15 then read(&const.handle)
+    elseif tag == 16 then read(&const.type)
+    elseif tag == 18 then read(&const.invoke_dynamic)
     else util.fatal("unknown tag: %d", tag) --TODO return error
     end
   end
