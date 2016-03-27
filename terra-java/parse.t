@@ -6,26 +6,73 @@ local util = require "terra-java/util"
 
 local file = global(&C.FILE)
 
-local terra read(x : &uint8) : {}
+local read = terralib.overloadedfunction("read")
+local free = terralib.overloadedfunction("free")
+
+read:adddefinition(terra(x : &uint8) : {}
   var nr = C.fread(x, sizeof(uint8), 1, file)
   if nr ~= 1 then
     util.fatal("Error reading: %d", C.ferror(file))
   end
-end
+end)
 
-local terra free(x : uint8) : {}
+free:adddefinition(terra(x : uint8) : {}
   -- nop
-end
+end)
 
 for _, T in ipairs({uint16, int16, uint32, int32, uint64, int64}) do
-  terra read(x : &T) : {}
+  read:adddefinition(terra(x : &T) : {}
     for i = sizeof(T) - 1, -1, -1 do
-      read([&uint8]([&uint8](x) + i))
+      read([&uint8](x) + i)
     end
-  end
-  terra free(x : T) : {}
+  end)
+  free:adddefinition(terra(x : T) : {}
     -- nop
-  end
+  end)
+end
+
+local VarArr = terralib.memoize(function(N, T)
+  local A = struct {
+    length : N;
+    elements : &T;
+  }
+  read:adddefinition(terra(x : &A) : {}
+    read(&x.length)
+    x.elements = [&T](C.malloc(x.length))
+    for i = 0, x.length do
+      read(&x.elements[i])
+    end
+  end)
+  free:adddefinition(terra(x : A) : {}
+    for i = 0, x.length do
+      free(x.elements[i])
+    end
+    C.free(x.elements)
+  end)
+  return A
+end)
+
+local UTF8 = VarArr(uint16, uint8)
+
+local function defread(T)
+
+  local x = symbol(&T)
+  local read_stmts = T.entries:map(function(e)
+    return `read(&x.[e.field])
+  end)
+  read:adddefinition(terra([x]) : {}
+    [read_stmts]
+  end)
+
+  local x = symbol(T)
+  local free_stmts = T.entries:map(function(e)
+    return `free(x.[e.field])
+  end)
+  free:adddefinition(terra([x]) : {}
+    var [x] = x
+    [free_stmts]
+  end)
+
 end
 
 local struct Header {
@@ -33,27 +80,6 @@ local struct Header {
   minor_version : uint16;
   major_version : uint16;
 }
-
-local VarArr = terralib.memoize(function(N, T)
-  local A = struct {
-    length : N;
-    elements : &T;
-  }
-  terra read(x : &A) : {}
-    read(&x.length)
-    x.elements = [&T](C.malloc(x.length))
-    for i = 0, x.length do
-      read(&x.elements[i])
-    end
-  end
-  terra free(x : A) : {}
-    for i = 0, x.length do
-      free(x.elements[i])
-    end
-    C.free(x.elements)
-  end
-  return A
-end)
 
 local struct Class {
   name_index : uint16;
@@ -73,8 +99,6 @@ local struct String {
   utf8_index : uint16;
 }
 
-local UTF8 = VarArr(uint16, uint8)
-
 local struct MethodHandle {
   reference_kind : uint8;
   reference_index : uint16;
@@ -88,6 +112,43 @@ local struct InvokeDynamic {
   bootstrap_method_attr_index : uint16;
   name_and_type_index : uint16;
 }
+
+local struct Attribute {
+  name_index : uint16;
+  info : VarArr(uint32, uint8);
+}
+
+for _, T in ipairs({Header, Class, Member, NameAndType, String,
+                    MethodHandle, MethodType, InvokeDynamic, Attribute}) do
+  defread(T)
+end
+
+local struct Field {
+  access_flags : uint16;
+  name_index : uint16;
+  descriptor_index : uint16;
+  attributes : VarArr(uint16, Attribute);
+}
+defread(Field)
+
+local struct Method {
+  access_flags : uint16;
+  name_index : uint16;
+  descriptor_index : uint16;
+  attributes : VarArr(uint16, Attribute);
+}
+defread(Method)
+
+local struct Body {
+  access_flags : uint16;
+  this_class : uint16;
+  super_class : uint16;
+  interfaces : VarArr(uint16, uint16);
+  fields : VarArr(uint16, Field);
+  methods : VarArr(uint16, Method);
+  attributes : VarArr(uint16, Attribute);
+}
+defread(Body)
 
 local struct Constant {
   tag : uint8;
@@ -107,53 +168,6 @@ local struct Constant {
   }
 }
 
-local struct Attribute {
-  name_index : uint16;
-  info : VarArr(uint32, uint8);
-}
-
-local struct Field {
-  access_flags : uint16;
-  name_index : uint16;
-  descriptor_index : uint16;
-  attributes : VarArr(uint16, Attribute);
-}
-
-local struct Method {
-  access_flags : uint16;
-  name_index : uint16;
-  descriptor_index : uint16;
-  attributes : VarArr(uint16, Attribute);
-}
-
-local struct Body {
-  access_flags : uint16;
-  this_class : uint16;
-  super_class : uint16;
-  interfaces : VarArr(uint16, uint16);
-  fields : VarArr(uint16, Field);
-  methods : VarArr(uint16, Method);
-  attributes : VarArr(uint16, Attribute);
-}
-
-for _, T in ipairs({Header, Class, Member, NameAndType, String,
-                    MethodHandle, MethodType, InvokeDynamic,
-                    Attribute, Field, Method, Body}) do
-  local x = symbol()
-  local read_stmts = T.entries:map(function(e)
-    return `read(&x.[e.field])
-  end)
-  local free_stmts = T.entries:map(function(e)
-    return `free(x.[e.field])
-  end)
-  terra read([x] : &T) : {}
-    [read_stmts]
-  end
-  terra free([x] : T) : {}
-    [free_stmts]
-  end
-end
-
 local struct ClassFile {
   header : Header;
   nconst : uint16;
@@ -161,7 +175,7 @@ local struct ClassFile {
   body : Body;
 }
 
-terra read(x : &ClassFile) : {}
+read:adddefinition(terra(x : &ClassFile) : {}
 
   read(&x.header)
   C.printf("Header: %x %d %d\n",
@@ -199,7 +213,7 @@ terra read(x : &ClassFile) : {}
 
   read(&x.body)
 
-end
+end)
 
 terra ClassFile:free()
   for i = 0, self.nconst do
