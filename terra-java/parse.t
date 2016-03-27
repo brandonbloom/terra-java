@@ -161,24 +161,23 @@ read:adddefinition(terra(x : &ConstantTable) : {}
 
   -- See Table 4.4. The Constant Pool.
   for i = 0, x.length do
-    var const = &x.elements[i]
-    var tag : uint8
-    read(&tag)
-    C.printf("const %d has tag %d\n", i, tag)
+    var k = &x.elements[i]
+    read(&k.tag)
+    C.printf("const %d has tag %d\n", i, k.tag)
 
-    if tag == 1 then read(&const.utf8)
-    elseif tag == 3 or tag == 4 then read(&const.i32) -- Also Float
-    elseif tag == 5 or tag == 6 then
-      read(&const.i64) -- Also Double
+    if k.tag == 1 then read(&k.utf8)
+    elseif k.tag == 3 or k.tag == 4 then read(&k.i32) -- Also Float
+    elseif k.tag == 5 or k.tag == 6 then
+      read(&k.i64) -- Also Double
       i = i + 1 -- Section 4.4.5 - "a poor choice".
-    elseif tag == 7 then read(&const.class)
-    elseif tag == 8 then read(&const.string)
-    elseif tag == 9 or tag == 10 or tag == 11 then read(&const.member)
-    elseif tag == 12 then read(&const.name_and_type)
-    elseif tag == 15 then read(&const.handle)
-    elseif tag == 16 then read(&const.type)
-    elseif tag == 18 then read(&const.invoke_dynamic)
-    else util.fatal("unknown tag: %d", tag) --TODO return error
+    elseif k.tag == 7 then read(&k.class)
+    elseif k.tag == 8 then read(&k.string)
+    elseif k.tag == 9 or k.tag == 10 or k.tag == 11 then read(&k.member)
+    elseif k.tag == 12 then read(&k.name_and_type)
+    elseif k.tag == 15 then read(&k.handle)
+    elseif k.tag == 16 then read(&k.type)
+    elseif k.tag == 18 then read(&k.invoke_dynamic)
+    else util.fatal("unknown tag: %d", k.tag) --TODO return error
     end
   end
 
