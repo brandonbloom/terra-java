@@ -6,10 +6,18 @@ local util = require "terra-java/util"
 
 local P = {}
 
-local ENV = symbol("env")
+local ENV = symbol(jvm.Env, "env")
 P.ENV = ENV
 
 local inits = {}
+
+local function initq(q)
+  (terra()
+    var [ENV] = jvm.env
+    [q]
+  end)()
+  return q
+end
 
 local function collectinits(dst, src)
   table.insert(dst, src.class)
@@ -34,12 +42,12 @@ P.class = terralib.memoize(function(name)
 
   local clazz = global(jni.class)
   inits[T] = {
-    class = quote
+    class = initq(quote
       clazz = ENV:FindClass(jni_name)
       if clazz == nil then
         util.fatal(["Class not found: " .. name])
       end
-    end,
+    end),
     members = {},
   }
 
@@ -65,15 +73,6 @@ P.class = terralib.memoize(function(name)
     --TODO: Allow up casts.
     --TODO: Handle nil.
     util.errorf("Unable to cast %s", name)
-  end
-
-  function T.metamethods:__staticinitialize()
-    local cinits = {}
-    collectinits(cinits, inits[T])
-    (terra()
-      var [ENV] = jvm.env
-      [cinits]
-    end)()
   end
 
   return T
@@ -115,14 +114,14 @@ function P.method(T, ret, name, params)
                or "Call" .. modifier .. jtypes.jni_name(ret) .. "Method"
 
   local mid = global(jni.methodID)
-  inits[T].members[name .. sig] = quote
+  inits[T].members[name .. sig] = initq(quote
     mid = ENV:[find](T.class(), name, sig)
     if mid == nil then
       util.fatal([
         ("Method not found: %s %s.%s%s\n"):format(T, modifier, name, sig)
       ])
     end
-  end
+  end)
 
   local args = terralib.newlist(params):map(function(param)
     local cast = jtypes.jni_type(param.type)
@@ -139,11 +138,10 @@ function P.method(T, ret, name, params)
     return convert(ret, target:[call](mid, [args]))
   end
 
-  if T.methods[name] then
-    T.methods[name]:adddefinition(fn:getdefinitions()[1])
-  else
-    T.methods[name] = fn
+  if not T.methods[name] then
+    T.methods[name] = terralib.overloadedfunction(name)
   end
+  T.methods[name]:adddefinition(fn)
 
 end
 
@@ -166,23 +164,22 @@ P.field = function(T, static, typ, name)
   local set = "Set" .. modifier .. jtypes.jni_name(typ) .. "Field"
 
   local fid = global(jni.fieldID)
-  inits[T].members[name .. " " .. sig] = quote
+  inits[T].members[name .. " " .. sig] = initq(quote
     fid = ENV:[find](T.class(), name, sig)
     if fid == nil then
       util.fatal([
         ("Field not found: %s %s.%s%s\n"):format(T, modifier, name, sig)
       ])
     end
-  end
+  end)
 
-  T.methods[name] = terra(self : T)
+  T.methods[name] = terralib.overloadedfunction(name)
+  T.methods[name]:adddefinition(terra(self : T)
     return self._obj:[get](fid)
-  end
-
-  local tmp = terra(self : T, value : typ)
+  end)
+  T.methods[name]:adddefinition(terra(self : T, value : typ)
     self._obj:[set](fid, value)
-  end
-  T.methods[name]:adddefinition(tmp:getdefinitions()[1])
+  end)
 
 end
 
@@ -214,13 +211,21 @@ P.Array = terralib.memoize(function(T)
 
   local jnitype = jtypes.jni_name(T)
 
-  A.methods.get = terra(self : A, i : jni.int) : T
-    var [ENV] = self._obj.env
-    return convert(T, self._obj:["Get" .. jnitype .. "ArrayElement"](i))
-  end
+  if jnitype == "Object" then
 
-  A.methods.set = terra(self : A, i : jni.int, v : T)
-    self._obj:["Set" .. jnitype .. "ArrayElement"](i, v)
+    A.methods.get = terra(self : A, i : jni.int) : T
+      var [ENV] = self._obj.env
+      return convert(T, self._obj:GetObjectArrayElement(i))
+    end
+
+    A.methods.set = terra(self : A, i : jni.int, v : T)
+      self._obj:SetObjectArrayElement(i, v)
+    end
+
+  else
+
+    --XXX Primitive array element access
+
   end
 
   if jtypes.primitive(T) then

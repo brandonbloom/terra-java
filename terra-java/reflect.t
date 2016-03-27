@@ -52,48 +52,48 @@ declare.field(Modifier, true, int, "STATIC")
 local T = nil
 local member = nil
 
-local function visit_class(chars, len)
+local begin_class = terralib.cast({&int8, int} -> {}, function(chars, len)
   T = declare.class(ffi.string(chars, len))
-end
+end)
 
-local function begin_field(static)
+local begin_field = terralib.cast({bool} -> {}, function(static)
   member = { static = static }
-end
+end)
 
-local function finish_field()
+local finish_field = terralib.cast({} -> {}, function()
   declare.field(T, member.static, member.returns, member.name)
-end
+end)
 
-local function begin_method(static)
+local begin_method = terralib.cast({bool} -> {}, function(static)
   member = { params = static and {} or {symbol(T, "self")} }
-end
+end)
 
-local function finish_method()
+local finish_method = terralib.cast({} -> {}, function()
   declare.method(T, member.returns, member.name, member.params)
-end
+end)
 
-local function begin_constructor(static)
+local begin_constructor = terralib.cast({bool} -> {}, function(static)
   member = { params = static and {} or {symbol(T, "self")} }
-end
+end)
 
-local function finish_constructor()
+local finish_constructor = terralib.cast({} -> {}, function()
   declare.constructor(T, member.params)
-end
+end)
 
-local function set_name(chars, len)
+local set_name = terralib.cast({&int8, int} -> {}, function(chars, len)
   member.name = ffi.string(chars, len)
-end
+end)
 
-local function set_returns(chars, len)
+local set_returns = terralib.cast({&int8, int} -> {}, function(chars, len)
   member.returns = declare.type(ffi.string(chars, len))
-end
+end)
 
-local function add_param(chars, len)
+local add_param = terralib.cast({&int8, int} -> {}, function(chars, len)
   local typ = declare.type(ffi.string(chars, len))
   local name = "arg" .. #member.params - 1
   local param = symbol(typ, name)
   table.insert(member.params, param)
-end
+end)
 
 
 -- Via Java reflection, visit a type with above callbacks.
@@ -125,28 +125,28 @@ local doname = macro(function(obj, f)
   end
 end)
 
-local terra visit(T : Class) : {}
+local terra visit_class(T : Class) : {}
 
-  doname(T, visit_class)
+  doname(T, begin_class)
 
   var ctors = T:getConstructors()
   for i = 0, ctors:len() do
-    visit(ctors:get(i))
+    visit_constructor(ctors:get(i))
   end
 
   var fields = T:getFields()
   for i = 0, fields:len() do
-    visit(fields:get(i))
+    visit_field(fields:get(i))
   end
 
   var methods = T:getMethods()
   for i = 0, methods:len() do
-    visit(methods:get(i))
+    visit_method(methods:get(i))
   end
 
 end
-and
-local terra visit(ctor : Constructor) : {}
+
+local terra visit_constructor(ctor : Constructor) : {}
 
   var modifiers = ctor:getModifiers()
   var static = (modifiers and STATIC) ~= 0
@@ -161,8 +161,8 @@ local terra visit(ctor : Constructor) : {}
   finish_constructor()
 
 end
-and
-local terra visit(field : Field) : {}
+
+local terra visit_field(field : Field) : {}
 
   var modifiers = field:getModifiers()
   var static = (modifiers and STATIC) ~= 0
@@ -175,8 +175,8 @@ local terra visit(field : Field) : {}
   finish_field()
 
 end
-and
-local terra visit(method : Method) : {}
+
+local terra visit_method(method : Method) : {}
 
   var modifiers = method:getModifiers()
   var static = (modifiers and STATIC) ~= 0
@@ -198,7 +198,7 @@ end
 local terra doreflect(name : rawstring)
   declare.embedded()
   var jstr = String.this(ENV:NewStringUTF(name))
-  visit(Class.static():forName(jstr))
+  visit_class(Class.static():forName(jstr))
 end
 
 
