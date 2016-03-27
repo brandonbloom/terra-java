@@ -122,7 +122,7 @@ local struct Field {
 local struct Method {
   access_flags : uint16;
   name_index : uint16;
-  descriptor_idnex : uint16;
+  descriptor_index : uint16;
   attributes : VarArr(uint16, Attribute);
 }
 
