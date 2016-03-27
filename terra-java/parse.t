@@ -16,7 +16,7 @@ read:adddefinition(terra(x : &uint8) : {}
   end
 end)
 
-free:adddefinition(terra(x : uint8) : {}
+free:adddefinition(terra(x : &uint8) : {}
   -- nop
 end)
 
@@ -26,7 +26,7 @@ for _, T in ipairs({uint16, int16, uint32, int32, uint64, int64}) do
       read([&uint8](x) + i)
     end
   end)
-  free:adddefinition(terra(x : T) : {}
+  free:adddefinition(terra(x : &T) : {}
     -- nop
   end)
 end
@@ -43,9 +43,9 @@ local VarArr = terralib.memoize(function(N, T)
       read(&x.elements[i])
     end
   end)
-  free:adddefinition(terra(x : A) : {}
+  free:adddefinition(terra(x : &A) : {}
     for i = 0, x.length do
-      free(x.elements[i])
+      free(&x.elements[i])
     end
     C.free(x.elements)
   end)
@@ -55,31 +55,21 @@ end)
 local UTF8 = VarArr(uint16, uint8)
 
 local function defread(T)
-
   local x = symbol(&T)
   local read_stmts = T.entries:map(function(e)
     return `read(&x.[e.field])
   end)
+  local free_stmts = T.entries:map(function(e)
+    return `free(&x.[e.field])
+  end)
   read:adddefinition(terra([x]) : {}
     [read_stmts]
-  end)
-
-  local x = symbol(T)
-  local free_stmts = T.entries:map(function(e)
-    return `free(x.[e.field])
   end)
   free:adddefinition(terra([x]) : {}
     var [x] = x
     [free_stmts]
   end)
-
 end
-
-local struct Header {
-  magic : uint32;
-  minor_version : uint16;
-  major_version : uint16;
-}
 
 local struct Class {
   name_index : uint16;
@@ -118,7 +108,7 @@ local struct Attribute {
   info : VarArr(uint32, uint8);
 }
 
-for _, T in ipairs({Header, Class, Member, NameAndType, String,
+for _, T in ipairs({Class, Member, NameAndType, String,
                     MethodHandle, MethodType, InvokeDynamic, Attribute}) do
   defread(T)
 end
@@ -139,17 +129,6 @@ local struct Method {
 }
 defread(Method)
 
-local struct Body {
-  access_flags : uint16;
-  this_class : uint16;
-  super_class : uint16;
-  interfaces : VarArr(uint16, uint16);
-  fields : VarArr(uint16, Field);
-  methods : VarArr(uint16, Method);
-  attributes : VarArr(uint16, Attribute);
-}
-defread(Body)
-
 local struct Constant {
   tag : uint8;
   union {
@@ -168,29 +147,21 @@ local struct Constant {
   }
 }
 
-local struct ClassFile {
-  header : Header;
-  nconst : uint16;
-  constants : &Constant;
-  body : Body;
+local struct ConstantTable {
+  length : uint16;
+  elements : &Constant;
 }
 
-read:adddefinition(terra(x : &ClassFile) : {}
+read:adddefinition(terra(x : &ConstantTable) : {}
 
-  read(&x.header)
-  C.printf("Header: %x %d %d\n",
-    x.header.magic,
-    x.header.major_version,
-    x.header.minor_version)
-
-  read(&x.nconst)
-  x.nconst = x.nconst - 1
-  x.constants = [&Constant](C.calloc(x.nconst, sizeof(Constant)))
-  C.printf("nconst = %d\n", x.nconst)
+  read(&x.length)
+  x.length = x.length - 1
+  x.elements = [&Constant](C.calloc(x.length, sizeof(Constant)))
+  C.printf("num consts = %d\n", x.length)
 
   -- See Table 4.4. The Constant Pool.
-  for i = 0, x.nconst do
-    var const = &x.constants[i]
+  for i = 0, x.length do
+    var const = &x.elements[i]
     var tag : uint8
     read(&tag)
     C.printf("const %d has tag %d\n", i, tag)
@@ -211,20 +182,37 @@ read:adddefinition(terra(x : &ClassFile) : {}
     end
   end
 
-  read(&x.body)
-
 end)
 
-terra ClassFile:free()
-  for i = 0, self.nconst do
-    var const = self.constants[i]
+free:adddefinition(terra(x : &ConstantTable) : {}
+  for i = 0, x.length do
+    var const = x.elements[i]
     if const.tag == 1 then
-      free(const.utf8)
+      free(&const.utf8)
     end
   end
-  C.free(self.constants)
-  free(self.body)
+  C.free(x.elements)
+end)
+
+local struct ClassFile {
+  magic : uint32;
+  minor_version : uint16;
+  major_version : uint16;
+  constants : ConstantTable;
+  access_flags : uint16;
+  this_class : uint16;
+  super_class : uint16;
+  interfaces : VarArr(uint16, uint16);
+  fields : VarArr(uint16, Field);
+  methods : VarArr(uint16, Method);
+  attributes : VarArr(uint16, Attribute);
+}
+defread(ClassFile)
+
+terra ClassFile:free()
+  free(self)
 end
+
 
 local terra decode()
 
