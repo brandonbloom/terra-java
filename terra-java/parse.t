@@ -38,7 +38,7 @@ local VarArr = terralib.memoize(function(N, T)
   }
   read:adddefinition(terra(x : &A) : {}
     read(&x.length)
-    x.elements = [&T](C.malloc(x.length))
+    x.elements = [&T](C.malloc(sizeof(T) * x.length))
     for i = 0, x.length do
       read(&x.elements[i])
     end
