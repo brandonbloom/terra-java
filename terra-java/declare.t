@@ -26,7 +26,16 @@ local function collectinits(dst, src)
   end
 end
 
-P.class = terralib.memoize(function(name)
+local notinherited = {}
+notinherited["<init>"] = true
+notinherited["class"] = true
+notinherited["static"] = true
+notinherited["this"] = true
+
+-- XXX handle inheritence and interfaces
+P.class = terralib.memoize(function(name, ...)
+
+  local bases = {...}
 
   local struct T {
     _obj : jvm.Object;
@@ -66,13 +75,47 @@ P.class = terralib.memoize(function(name)
     return clazz
   end
 
+  -- Build set of super classes and dispatch chain from top of hierarchy down.
+  local chain = {}
+  local supers = {}
+  for _, base in ipairs(bases) do
+    for _, super in ipairs(base.metamethods.chain) do
+      if not supers[super] then
+        table.insert(chain, super)
+        supers[super] = true
+      end
+    end
+  end
+  table.insert(chain, T)
+  T.metamethods.chain = chain
+
   T.metamethods.__cast = function(from, to, expr)
     if to == jni.object then
       return `expr._obj.this
     end
-    --TODO: Allow up casts.
+    if supers[to] then
+      return `to{expr._obj}
+    end
     --TODO: Handle nil.
     util.errorf("Unable to cast %s", name)
+  end
+
+  T.metamethods.__getmethod = function(self, methodname)
+    if notinherited[methodname] then
+      return T.methods[methodname]
+    end
+    -- Aggregate all method overloads.
+    --TODO: Omit overridden overloads.
+    local ofn = terralib.overloadedfunction(methodname)
+    for _, super in ipairs(chain) do
+      local basemethod = super.methods[methodname]
+      if basemethod then
+        for _, def in ipairs(basemethod:getdefinitions()) do
+          ofn:adddefinition(def)
+        end
+      end
+    end
+    return #ofn:getdefinitions() > 0 and ofn or nil
   end
 
   return T
@@ -173,6 +216,7 @@ P.field = function(T, static, typ, name)
     end
   end)
 
+  -- Define accessor methods.
   T.methods[name] = terralib.overloadedfunction(name)
   T.methods[name]:adddefinition(terra(self : T)
     return self._obj:[get](fid)
@@ -238,6 +282,13 @@ P.Array = terralib.memoize(function(T)
     -- void Release<PrimitiveType>ArrayElements(
     --   JNIEnv *env, ArrayType array, NativeType *elems, jint mode);
 
+  end
+
+  A.metamethods.__cast = function(from, to, expr)
+    if to == jni.object then
+      return `expr._obj.this
+    end
+    util.errorf("Unable to cast %s", java_name)
   end
 
   return A

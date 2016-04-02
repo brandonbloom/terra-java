@@ -6,42 +6,41 @@ local ENV = declare.ENV
 
 
 -- Manually declare enough reflection APIs so we can automate declarations.
+--XXX This is _incomplete_ and that's problematic ... until classfile reading!
 
 local Array = declare.Array
 local String = declare.class("java.lang.String")
 local Class = declare.class("java.lang.Class")
-local Field = declare.class("java.lang.reflect.Field")
-local Method = declare.class("java.lang.reflect.Method")
-local Constructor = declare.class("java.lang.reflect.Constructor")
+local Member = declare.class("java.lang.reflect.Member")
+local Field = declare.class("java.lang.reflect.Field", Member)
+local Method = declare.class("java.lang.reflect.Method", Member)
+local Constructor = declare.class("java.lang.reflect.Constructor", Member)
 local Modifier = declare.class("java.lang.reflect.Modifier")
 
 declare.methods(Class, {
   {Class, "forName", {symbol(String, "className")}},
-  {Array(Constructor), "getConstructors", {symbol(Class, "self")}},
-  {Array(Field), "getFields", {symbol(Class, "self")}},
-  {Array(Method), "getMethods", {symbol(Class, "self")}},
+  {Array(Constructor), "getDeclaredConstructors", {symbol(Class, "self")}},
+  {Array(Field), "getDeclaredFields", {symbol(Class, "self")}},
+  {Array(Method), "getDeclaredMethods", {symbol(Class, "self")}},
   {String, "getName", {symbol(Class, "self")}}
 })
 
---TODO: Consider inheritence when declaring these.
+declare.methods(Member, {
+  {String, "getName", {symbol(Member, "self")}},
+  {int, "getModifiers", {symbol(Member, "self")}},
+})
 
 declare.methods(Constructor, {
-  {String, "getName", {symbol(Constructor, "self")}},
   {Array(Class), "getParameterTypes", {symbol(Constructor, "self")}},
-  {int, "getModifiers", {symbol(Constructor, "self")}},
 })
 
 declare.methods(Field, {
-  {String, "getName", {symbol(Field, "self")}},
   {Class, "getType", {symbol(Field, "self")}},
-  {int, "getModifiers", {symbol(Field, "self")}},
 })
 
 declare.methods(Method, {
-  {String, "getName", {symbol(Method, "self")}},
   {Class, "getReturnType", {symbol(Method, "self")}},
   {Array(Class), "getParameterTypes", {symbol(Method, "self")}},
-  {int, "getModifiers", {symbol(Method, "self")}},
 })
 
 declare.field(Modifier, true, int, "STATIC")
@@ -129,17 +128,17 @@ local terra visit_class(T : Class) : {}
 
   doname(T, begin_class)
 
-  var ctors = T:getConstructors()
+  var ctors = T:getDeclaredConstructors()
   for i = 0, ctors:len() do
     visit_constructor(ctors:get(i))
   end
 
-  var fields = T:getFields()
+  var fields = T:getDeclaredFields()
   for i = 0, fields:len() do
     visit_field(fields:get(i))
   end
 
-  var methods = T:getMethods()
+  var methods = T:getDeclaredMethods()
   for i = 0, methods:len() do
     visit_method(methods:get(i))
   end
