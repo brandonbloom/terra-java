@@ -190,6 +190,7 @@ function P.method(T, ret, name, params)
 
 end
 
+--XXX delete this after reflect no longer uses it
 P.methods = function(T, sigs)
   for _, sig in ipairs(sigs) do
     P.method(T, unpack(sig))
@@ -270,19 +271,33 @@ P.Array = terralib.memoize(function(T)
 
   else
 
-    --XXX Primitive array element access
+    local struct Pinned {
+      _obj : jvm.Object;
+      is_copy : jni.boolean;
+      len : jni.int;
+      elements : &T;
+    }
 
-  end
+    local acquire = "Get" .. jnitype .. "ArrayElements"
+    local release = "Release" .. jnitype .. "ArrayElements"
 
-  if jtypes.primitive(T) then
+    local releasef = terralib.overloadedfunction("release")
+    Pinned.methods.release = releasef
+    releasef:adddefinition(terra(self : &Pinned, mode : jni.int)
+      self._obj:[release](self.elements, mode)
+    end)
+    releasef:adddefinition(terra(self : &Pinned)
+      self:release(0)
+    end)
 
-    --TODO: A.methods.acquire
-    -- NativeType *Get<PrimitiveType>ArrayElements(
-    --   JNIEnv *env, ArrayType array, jboolean *isCopy);
-
-    --TODO: A.methods.release
-    -- void Release<PrimitiveType>ArrayElements(
-    --   JNIEnv *env, ArrayType array, NativeType *elems, jint mode);
+    terra A:pin() : Pinned
+      var ret = Pinned{
+        _obj = self._obj,
+        len = self:len()
+      }
+      ret.elements = self._obj:[acquire](&ret.is_copy)
+      return ret
+    end
 
   end
 
@@ -297,9 +312,11 @@ P.Array = terralib.memoize(function(T)
 
 end)
 
--- Pre-declare primitive array types to fill lookup tables.
-for _, T in pairs(jtypes.java_primitives) do
-  P.Array(T)
+-- Pre-declare primitive array types to fill the types lookup tables.
+for name, T in pairs(jtypes.java_primitives) do
+  if name ~= "void" then
+    P.Array(T)
+  end
 end
 
 --XXX: use me by exporting JNI_OnLoad when compiling a jnilib

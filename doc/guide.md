@@ -82,11 +82,23 @@ end
 Arrays are constructed with `J.new` and accept a size parameter.
 For example: `J.new(J.array(int), 10)` creates an array of ten ints.
 
-Arrays have the following methods defined on them:
+All arrays have a `len()` method.
 
-- `arr:len()`
+Object array elements have direct indexing methods:
+
 - `arr:get(index)`
 - `arr:set(index, value)`
+
+Primitive array elements must be accessed via pinning:
+
+```lua
+var pinned = integers:pin()
+defer pinned:release()
+for i = 0, pinned.len do
+  f(pinned.elements[i])
+end
+```
+
 
 ## Strings
 

@@ -66,7 +66,6 @@ local function defread(T)
     [read_stmts]
   end)
   free:adddefinition(terra([x]) : {}
-    var [x] = x
     [free_stmts]
   end)
 end
