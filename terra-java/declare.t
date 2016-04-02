@@ -32,10 +32,12 @@ notinherited["class"] = true
 notinherited["static"] = true
 notinherited["this"] = true
 
--- XXX handle inheritence and interfaces
 P.class = terralib.memoize(function(name, ...)
 
   local bases = {...}
+  if #bases == 0 and name ~= "java.lang.Object" then
+    bases = {P.class("java.lang.Object")}
+  end
 
   local struct T {
     _obj : jvm.Object;
