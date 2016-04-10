@@ -4,16 +4,14 @@
 local C = require "terra-java/c"
 local util = require "terra-java/util"
 
-local file = global(&C.FILE)
+local buf = global(&uint8)
 
 local read = terralib.overloadedfunction("read")
 local free = terralib.overloadedfunction("free")
 
 read:adddefinition(terra(x : &uint8) : {}
-  var nr = C.fread(x, sizeof(uint8), 1, file)
-  if nr ~= 1 then
-    util.fatal("Error reading: %d", C.ferror(file))
-  end
+  @x = buf[0]
+  buf = buf + 1
 end)
 
 free:adddefinition(terra(x : &uint8) : {}
@@ -107,13 +105,21 @@ local struct Attribute {
   info : VarArr(uint32, uint8);
 }
 
-for _, T in ipairs({Class, Member, NameAndType, String,
-                    MethodHandle, MethodType, InvokeDynamic, Attribute}) do
+local struct AccessFlags {
+  flags : uint16;
+}
+
+terra AccessFlags:is_static()
+  return (self.flags and 0x0008) ~= 0
+end
+
+for _, T in ipairs({Class, Member, NameAndType, String, MethodHandle,
+                    MethodType, InvokeDynamic, Attribute, AccessFlags}) do
   defread(T)
 end
 
 local struct Field {
-  access_flags : uint16;
+  access_flags : AccessFlags;
   name_index : uint16;
   descriptor_index : uint16;
   attributes : VarArr(uint16, Attribute);
@@ -121,7 +127,7 @@ local struct Field {
 defread(Field)
 
 local struct Method {
-  access_flags : uint16;
+  access_flags : AccessFlags;
   name_index : uint16;
   descriptor_index : uint16;
   attributes : VarArr(uint16, Attribute);
@@ -156,14 +162,12 @@ read:adddefinition(terra(x : &ConstantTable) : {}
   read(&x.length)
   x.length = x.length - 1
   x.elements = [&Constant](C.calloc(x.length, sizeof(Constant)))
-  C.printf("num consts = %d\n", x.length)
 
   -- See Table 4.4. The Constant Pool.
-  for i = 0, x.length do
+  var i = 0
+  while i < x.length do
     var k = &x.elements[i]
     read(&k.tag)
-    C.printf("const %d has tag %d\n", i, k.tag)
-
     if k.tag == 1 then read(&k.utf8)
     elseif k.tag == 3 or k.tag == 4 then read(&k.i32) -- Also Float
     elseif k.tag == 5 or k.tag == 6 then
@@ -176,8 +180,9 @@ read:adddefinition(terra(x : &ConstantTable) : {}
     elseif k.tag == 15 then read(&k.handle)
     elseif k.tag == 16 then read(&k.type)
     elseif k.tag == 18 then read(&k.invoke_dynamic)
-    else util.fatal("unknown tag: %d", k.tag) --TODO return error
+    else util.fatal("unknown tag: %d", k.tag)
     end
+    i = i + 1
   end
 
 end)
@@ -197,7 +202,7 @@ local struct ClassFile {
   minor_version : uint16;
   major_version : uint16;
   constants : ConstantTable;
-  access_flags : uint16;
+  access_flags : AccessFlags;
   this_class : uint16;
   super_class : uint16;
   interfaces : VarArr(uint16, uint16);
@@ -212,17 +217,17 @@ terra ClassFile:free()
 end
 
 
-local terra decode()
-
-  file = C.fopen("./Foo.class", "rb")
-  defer C.fclose(file)
-
+local terra from_bytes(bytes : &uint8)
+  buf = bytes
   var cls : ClassFile
   read(&cls)
-
   return cls
-
 end
 
-local cls = decode()
-cls:free()
+-- local cls = decode("./Foo.class")
+-- cls:free()
+
+return {
+  ClassFile = ClassFile,
+  from_bytes = from_bytes
+}

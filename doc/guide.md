@@ -92,7 +92,7 @@ Object array elements have direct indexing methods:
 Primitive array elements must be accessed via pinning:
 
 ```lua
-var pinned = integers:pin()
+var pinned = arr:acquire()
 defer pinned:release()
 for i = 0, pinned.len do
   f(pinned.elements[i])

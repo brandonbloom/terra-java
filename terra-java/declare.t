@@ -190,13 +190,6 @@ function P.method(T, ret, name, params)
 
 end
 
---XXX delete this after reflect no longer uses it
-P.methods = function(T, sigs)
-  for _, sig in ipairs(sigs) do
-    P.method(T, unpack(sig))
-  end
-end
-
 P.constructor = function(T, params)
   P.method(T, jni.void, "<init>", params)
 end
@@ -290,7 +283,7 @@ P.Array = terralib.memoize(function(T)
       self:release(0)
     end)
 
-    terra A:pin() : Pinned
+    terra A:acquire() : Pinned
       var ret = Pinned{
         _obj = self._obj,
         len = self:len()

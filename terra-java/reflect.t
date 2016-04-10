@@ -1,49 +1,32 @@
 local ffi = require "ffi"
 local jvm = require "terra-java/jvm"
 local declare = require "terra-java/declare"
+local parse = require "terra-java/declare"
+local C = require "terra-java/c"
 
 local ENV = declare.ENV
 
 
 -- Manually declare enough reflection APIs so we can automate declarations.
---XXX This is _incomplete_ and that's problematic ... until classfile reading!
-
-local Array = declare.Array
+--XXX Need to un-memoize String so that the parsing will define it fully.
 local String = declare.class("java.lang.String")
-local Class = declare.class("java.lang.Class")
-local Member = declare.class("java.lang.reflect.Member")
-local Field = declare.class("java.lang.reflect.Field", Member)
-local Method = declare.class("java.lang.reflect.Method", Member)
-local Constructor = declare.class("java.lang.reflect.Constructor", Member)
-local Modifier = declare.class("java.lang.reflect.Modifier")
+local Lib = declare.class("terrajava.Lib")
 
-declare.methods(Class, {
-  {Class, "forName", {symbol(String, "className")}},
-  {Array(Constructor), "getDeclaredConstructors", {symbol(Class, "self")}},
-  {Array(Field), "getDeclaredFields", {symbol(Class, "self")}},
-  {Array(Method), "getDeclaredMethods", {symbol(Class, "self")}},
-  {String, "getName", {symbol(Class, "self")}}
-})
+declare.method(Lib, declare.Array(int8), "getClassBytes", {symbol(String, "className")})
 
-declare.methods(Member, {
-  {String, "getName", {symbol(Member, "self")}},
-  {int, "getModifiers", {symbol(Member, "self")}},
-})
 
-declare.methods(Constructor, {
-  {Array(Class), "getParameterTypes", {symbol(Constructor, "self")}},
-})
+terra f()
+  declare.embedded()
+  var lib = Lib.static()
+  var name = String.this(ENV:NewStringUTF("java.util.Date")) --XXX make helper
+  var byteArr = lib:getClassBytes(name)
+  var bs = byteArr:acquire()
+  defer bs:release()
+  C.printf("OMG %d\n", bs.len)
+end
 
-declare.methods(Field, {
-  {Class, "getType", {symbol(Field, "self")}},
-})
-
-declare.methods(Method, {
-  {Class, "getReturnType", {symbol(Method, "self")}},
-  {Array(Class), "getParameterTypes", {symbol(Method, "self")}},
-})
-
-declare.field(Modifier, true, int, "STATIC")
+f()
+error("done")
 
 
 -- Callback functions called during type visitation.
