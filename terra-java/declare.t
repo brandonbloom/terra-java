@@ -28,6 +28,7 @@ end
 
 local notinherited = {}
 notinherited["<init>"] = true
+--XXX Eliminate these, just make them J.class, J.static, and J.this
 notinherited["class"] = true
 notinherited["static"] = true
 notinherited["this"] = true
@@ -282,7 +283,7 @@ P.Array = terralib.memoize(function(T)
       elements : &T;
     }
 
-    local acquire = "Get" .. jnitype .. "ArrayElements"
+    local retain = "Get" .. jnitype .. "ArrayElements"
     local release = "Release" .. jnitype .. "ArrayElements"
 
     local releasef = terralib.overloadedfunction("release")
@@ -294,12 +295,12 @@ P.Array = terralib.memoize(function(T)
       self:release(0)
     end)
 
-    terra A:acquire() : Pinned
+    terra A:retain() : Pinned
       var ret = Pinned{
         _obj = self._obj,
         len = self:len()
       }
-      ret.elements = self._obj:[acquire](&ret.is_copy)
+      ret.elements = self._obj:[retain](&ret.is_copy)
       return ret
     end
 

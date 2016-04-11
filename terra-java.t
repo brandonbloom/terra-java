@@ -2,6 +2,7 @@ local types = require "terra-java/types"
 local declare = require "terra-java/declare"
 local reflect = require "terra-java/reflect"
 local define = require "terra-java/define"
+local ref = require "terra-java/ref"
 
 local P = {
   embedded = declare.embedded,
@@ -9,7 +10,9 @@ local P = {
   new = declare.new,
   class = declare.class,
   package = reflect.package,
-  implement = define.implement
+  implement = define.implement,
+  retain = jvm.retain,
+  release = jvm.release
 }
 
 for k, v in pairs(types.java_primitives) do

@@ -26,8 +26,10 @@ terra parse_classfile(name : rawstring) : parse.ClassFile
   -- Get classfile bytes.
   var lib = Lib.static()
   var name = String.this(ENV:NewStringUTF(name)) --TODO: String factory.
+  defer ref.release(name)
   var byteArr = lib:getClassBytes(name)
-  var bs = byteArr:acquire()
+  defer ref.release(byteArr)
+  var bs = byteArr:retain()
   defer bs:release()
 
   -- Interpret classfile.

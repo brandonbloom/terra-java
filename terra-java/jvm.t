@@ -51,5 +51,5 @@ end
 return {
   Env = Env,
   Object = Object,
-  env = init(),
+  env = init()
 }
