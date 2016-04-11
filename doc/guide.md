@@ -12,9 +12,15 @@ helpful for many tasks, but should not be required.
 Experience with [Lua/Terra][2] and low-level programming is assumed.
 
 
-# Importing
+# Configuration
 
-Add the root Terra-Java directory to your Lua path, then simply `require` it:
+The following environment variables should be set:
+
+- `INCLUDE_PATH`: Used by Terra to find standard C headers.
+- `TERRA_PATH`: Add to this the root directory of Terra-Java.
+- `JDK_HOME`: Terra-Java uses this to find Java headers and libjvm.
+
+Then load Terra-Java like this:
 
 ```lua
 local J = require "terra-java"
