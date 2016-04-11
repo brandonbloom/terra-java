@@ -1,7 +1,8 @@
 local ffi = require "ffi"
 local jvm = require "terra-java/jvm"
 local declare = require "terra-java/declare"
-local parse = require "terra-java/declare"
+local parse = require "terra-java/parse"
+local util = require "terra-java/util"
 local C = require "terra-java/c"
 
 local ENV = declare.ENV
@@ -15,184 +16,157 @@ local Lib = declare.class("terrajava.Lib")
 declare.method(Lib, declare.Array(int8), "getClassBytes", {symbol(String, "className")})
 
 
-terra f()
+-- Caller must call :free() the result.
+terra parse_classfile(name : rawstring) : parse.ClassFile
   declare.embedded()
+
+  -- Get classfile bytes.
   var lib = Lib.static()
-  var name = String.this(ENV:NewStringUTF("java.util.Date")) --XXX make helper
+  var name = String.this(ENV:NewStringUTF(name)) --TODO: String factory.
   var byteArr = lib:getClassBytes(name)
   var bs = byteArr:acquire()
   defer bs:release()
-  C.printf("OMG %d\n", bs.len)
+
+  -- Interpret classfile.
+  return parse.from_bytes([&uint8](bs.elements))
 end
 
-f()
-error("done")
 
-
--- Callback functions called during type visitation.
-
-local T = nil
-local member = nil
-
-local begin_class = terralib.cast({&int8, int} -> {}, function(chars, len)
-  T = declare.class(ffi.string(chars, len))
-end)
-
-local begin_field = terralib.cast({bool} -> {}, function(static)
-  member = { static = static }
-end)
-
-local finish_field = terralib.cast({} -> {}, function()
-  declare.field(T, member.static, member.returns, member.name)
-end)
-
-local begin_method = terralib.cast({bool} -> {}, function(static)
-  member = { params = static and {} or {symbol(T, "self")} }
-end)
-
-local finish_method = terralib.cast({} -> {}, function()
-  declare.method(T, member.returns, member.name, member.params)
-end)
-
-local begin_constructor = terralib.cast({bool} -> {}, function(static)
-  member = { params = static and {} or {symbol(T, "self")} }
-end)
-
-local finish_constructor = terralib.cast({} -> {}, function()
-  declare.constructor(T, member.params)
-end)
-
-local set_name = terralib.cast({&int8, int} -> {}, function(chars, len)
-  member.name = ffi.string(chars, len)
-end)
-
-local set_returns = terralib.cast({&int8, int} -> {}, function(chars, len)
-  member.returns = declare.type(ffi.string(chars, len))
-end)
-
-local add_param = terralib.cast({&int8, int} -> {}, function(chars, len)
-  local typ = declare.type(ffi.string(chars, len))
-  local name = "arg" .. #member.params - 1
-  local param = symbol(typ, name)
-  table.insert(member.params, param)
-end)
-
-
--- Via Java reflection, visit a type with above callbacks.
-
-local STATIC = (terra()
-  declare.embedded()
-  return Modifier.static():STATIC()
-end)()
-
---TODO: belongs elsewhere?
-local unpackstr = macro(function(s)
-  return quote
-    var obj = s._obj
-    var len = obj:GetStringUTFLength()
-    var chars = obj:GetStringUTFChars(nil)
-    defer obj:ReleaseStringUTFChars(chars)
-  in
-    chars, len
+function getstr(cf, i)
+  if i == 0 then
+    return nil
   end
+  local k = cf.constants.elements[i - 1]
+  if k.tag == 1 then
+    return ffi.string(k.utf8.elements, k.utf8.length)
+  elseif k.tag == 7 then
+    return getstr(cf, k.class.name_index)
+  else
+    util.errorf("cannot convert const %d with tag %d to string", i, k.tag)
+  end
+end
+
+function getclassname(cf, i)
+  local name = getstr(cf, i)
+  return name and name:gsub("/", ".")
+end
+
+-- Pairs of ClassFile and Terra struct type to have their members reflected.
+local todo = {}
+
+-- Recursively declare class and supers; enqueue for member reflection.
+-- Returns the declared type.
+local visit_class = nil
+visit_class = terralib.memoize(function(name)
+
+  local cf = parse_classfile(name)
+
+  local bases = terralib.newlist({})
+
+  local super = getclassname(cf, cf.super_class)
+  if super then
+    table.insert(bases, super)
+  end
+
+  for i = 0, cf.interfaces.length - 1 do
+    local iface = cf.interfaces.elements[i]
+    table.insert(bases, getclassname(cf, iface))
+  end
+
+  bases = bases:map(visit_class)
+
+  local this = getclassname(cf, cf.this_class)
+  local T = declare.class(this)
+  table.insert(todo, {cf, T})
+
+  return T
+
 end)
 
-local doname = macro(function(obj, f)
-  return quote
-    do
-      var name = obj:getName()
-      var chars, len = unpackstr(name)
-      f(chars, len)
+local function parse_sig(sig)
+  local params = {}
+  local ret = {}
+  local array = false
+  local target = params
+  local typ = nil
+  local i = 2 -- Skip "("
+  while i <= #sig do
+    local c = sig:sub(i, i)
+    i = i + 1
+    if c == ")" then
+      target = ret
+    elseif c == "[" then
+      array = true
+    elseif c == "L" then
+      local j = sig:find(";", i)
+      typ = declare.type(sig:sub(i, j - 1))
+      i = j + 1
+    else
+      typ = declare.type(c)
+    end
+    if typ then
+      if array then
+        typ = declare.array(typ)
+        array = false
+      end
+      table.insert(target, typ)
+      typ = nil
     end
   end
-end)
-
-local terra visit_class(T : Class) : {}
-
-  doname(T, begin_class)
-
-  var ctors = T:getDeclaredConstructors()
-  for i = 0, ctors:len() do
-    visit_constructor(ctors:get(i))
-  end
-
-  var fields = T:getDeclaredFields()
-  for i = 0, fields:len() do
-    visit_field(fields:get(i))
-  end
-
-  var methods = T:getDeclaredMethods()
-  for i = 0, methods:len() do
-    visit_method(methods:get(i))
-  end
-
+  return params, ret[1]
 end
 
-local terra visit_constructor(ctor : Constructor) : {}
+-- Declares all the members of a type.
+local function visit_members(cf, T)
 
-  var modifiers = ctor:getModifiers()
-  var static = (modifiers and STATIC) ~= 0
-
-  begin_constructor(static)
-
-  var params = ctor:getParameterTypes()
-  for i = 0, params:len() do
-    doname(params:get(0), add_param)
+  local function member_name(m)
+    return getstr(cf, m.name_index)
   end
 
-  finish_constructor()
-
-end
-
-local terra visit_field(field : Field) : {}
-
-  var modifiers = field:getModifiers()
-  var static = (modifiers and STATIC) ~= 0
-
-  begin_field(static)
-  doname(field, set_name)
-
-  doname(field:getType(), set_returns)
-
-  finish_field()
-
-end
-
-local terra visit_method(method : Method) : {}
-
-  var modifiers = method:getModifiers()
-  var static = (modifiers and STATIC) ~= 0
-
-  begin_method(static)
-  doname(method, set_name)
-
-  doname(method:getReturnType(), set_returns)
-
-  var params = method:getParameterTypes()
-  for i = 0, params:len() do
-    doname(params:get(i), add_param)
+  -- Declare fields.
+  for i = 0, cf.fields.length - 1 do
+    local f = cf.fields.elements[i]
+    local name = member_name(f)
+    local desc = getclassname(cf, f.descriptor_index)
+    local typ = declare.type(desc)
+    local static = f.access_flags:is_static()
+    declare.field(T, static, typ, name)
   end
 
-  finish_method()
+  -- Declare methods, including constructors.
+  for i = 0, cf.methods.length - 1 do
+    local m = cf.methods.elements[i]
+    local name = member_name(m)
+    if name ~= "<clinit>" then -- Skip class initializers.
+      local desc = getclassname(cf, m.descriptor_index)
+      local static = m.access_flags:is_static()
+      local params, ret = parse_sig(desc)
+      for i = 1, #params do
+        params[i] = symbol(params[i], "arg" .. i - 1)
+      end
+      if not static then
+        table.insert(params, 1, symbol(T, "self"))
+      end
+      declare.method(T, ret, name, params)
+    end
+  end
 
-end
-
-local terra doreflect(name : rawstring)
-  declare.embedded()
-  var jstr = String.this(ENV:NewStringUTF(name))
-  visit_class(Class.static():forName(jstr))
 end
 
 
 local P = {}
 
-P.class = terralib.memoize(function(name)
-  doreflect(name)
-  local ret = T
-  member = nil
-  T = nil
-  return ret
-end)
+function P.class(name)
+  -- Visit the inheritence DAG, returning the root.
+  local T = visit_class(name)
+  -- While there are newly encountered classes, reflect their members.
+  while #todo > 0 do
+    local cf, T = unpack(table.remove(todo))
+    visit_members(cf, T)
+    cf:free()
+  end
+  return T
+end
 
 function P.package(name)
   local mt = {
