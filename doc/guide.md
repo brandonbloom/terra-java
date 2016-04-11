@@ -1,59 +1,116 @@
 **WORK IN PROGRESS**
 
-This document is currently somewhat aspirational.
+This document is currently more of a goals / design-doc than usage reference.
+That is, most of this stuff doesn't work, or doesn't work with this syntax.
+
+
+# Background
+
+Some familiarity with the [Java Native Interface Specification][1] will be
+helpful for many tasks, but should not be required.
+
+Experience with [Lua/Terra][2] and low-level programming is assumed.
+
+
+# Importing
+
+Add the root Terra-Java directory to your Lua path, then simply `require` it:
+
+```lua
+local J = require "terra-java"
+```
 
 
 # JNI Environments and Terra-Java Objects
 
 All JNI operations require an environment object. Terra-Java wrapper objects
-contain both an environment pointer and a _this_ pointer.
+contain references to both an environment and _this_. Methods on a Terra-Java
+object will supply the environment automatically.
 
-TODO: Lots more to say about this.
+If a raw JNI object is required, an implicit conversation will extract the
+_this_ reference.
+
+For operations not associated with a particular object instance, an
+environment is obtained implicitly from the lexical scope. The target
+environment must be declared in the terra function.
+
+For metaprogramming and scripting, declare the embedded JVM:
+
+```lua
+J.embedded()
+```
+
+For callbacks from the JVM, such as when implementing native extensions,
+do SOMETHING YET TO BE DOCUMENTED. XXX
+
+
+## Object Lifetime
+
+Java objects may be stored anywhere (stack or heap) during the duration
+of a Java-to-native callback. These "local references" will be automatically
+freed when control returns from the native callback.
+
+However, if a Java object lives longer than a native callback activation, it
+is called a "global reference". Global references must be explicitly retained
+and released:
+
+```lua
+someGlobal = J.retain(obj)
+-- later...
+J.release(someGlobal)
+```
+
+You may explicitly release local references if you want to free their
+resources early.
+
+When interacting with the embedded JVM, the Lua process is effectively a giant
+native callback. All local references acquired from the embedded JVM should be
+explicitly released.
 
 
 ## Thread-Safety
 
-JNI Environment objects are _not thread safe_. Therefore, Terra-Java objects
+JNI Environments are _not thread safe_. Therefore, Terra-Java objects
 are also not thread safe. Since Lua and the Terra compiler are single
-threaded, the lack of thread safety is not an issue for the embedded JVM and
-metaprogramming code.
+threaded, the lack of thread safety is not an issue for the embedded JVM.
 
-However, native code that is potentially called from an external JVM, must be
-aware of object-thread ownership. Eventually, there will be a recommended way
-to pass objects between threads.
+Using `J.acquire` to create a global reference will strip the environment
+from a Terra-Java object. The global reference can then be used safely on
+any thread in code where a substitute JNI environment is available.
 
 
 # Translating Java-isms
 
 ## Imports
 
-The `J.package` function returns a table of implicitly-defined elements that
-represent classes imported from the package of the given name.
+The `J.package(name)` function returns a table of implicitly-defined elements
+that represent classes imported from the package of the given name.
 
 ```lua
-local StringBuilder = J.package("java.lang").StringBuilder
+local lang = J.package("java.lang")
+local StringBuilder = lang.StringBuilder
 ```
 
 ## Constructors
 
-New objects can be constructed with the `J.new(class, args...)` macro.
+New objects can be constructed with the `J.new(class, args...)` macro:
 
 ```lua
-J.new(StringBuilder, 10000)
+var sb = J.new(StringBuilder, 10000)
 ```
 
 ## Methods
 
-As you'd expect, Java methods become Terra methods.
+Java methods become Terra methods:
 
 ```lua
-obj:method(args, go, here)
+sb:setLength(50)
 ```
 
 ## Fields
 
-Fields become overloaded accessors methods. No arguments returns the field
-value; one argument sets the field value.
+Fields become overloaded accessors methods. Call them without arguments to
+return the field's value, or with one argument to set the field's value:
 
 ```lua
 terra move(p : Point, dx : int, dy : int)
@@ -64,14 +121,14 @@ end
 
 ## Statics
 
-Static members don't need a _this_ pointer, but still need a JNI environment.
-You can create an object with a null _this_ pointer with the "static" macro.
-Note that this macro uses the implicit environment supplied by `J.embedded()`.
+Static members don't need a _this_ reference, but still need a JNI environment.
+You can create an object with an environment and a null _this_ reference via
+the "J.static" macro:
 
 ```lua
 terra pi()
   J.embedded()
-  return Math.static():toRadians(180)
+  return J.static(Math):toRadians(180)
 end
 ```
 
@@ -79,8 +136,12 @@ end
 
 `J.Array(T)` is the generic array type constructor.
 
-Arrays are constructed with `J.new` and accept a size parameter.
-For example: `J.new(J.array(int), 10)` creates an array of ten ints.
+Arrays are constructed with `J.new` and accept a size parameter. For example,
+this creates an array of ten integers:
+
+```lua
+J.new(J.array(int), 10)
+```
 
 All arrays have a `len()` method.
 
@@ -92,18 +153,23 @@ Object array elements have direct indexing methods:
 Primitive array elements must be accessed via pinning:
 
 ```lua
-var pinned = arr:acquire()
+var pinned = arr:retain()
 defer pinned:release()
 for i = 0, pinned.len do
   f(pinned.elements[i])
 end
 ```
 
-
 ## Strings
 
 TODO
 
-# Native Extensiono
+
+# Native Extensions
 
 TODO
+
+
+
+[1]: http://docs.oracle.com/javase/7/docs/technotes/guides/jni/spec/jniTOC.html
+[2]: http://terralang.org/
