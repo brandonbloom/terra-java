@@ -9,11 +9,14 @@ local ENV = declare.ENV
 
 
 -- Manually declare enough reflection APIs so we can automate declarations.
---XXX Need to un-memoize String so that the parsing will define it fully.
 local String = declare.class("java.lang.String")
 local Lib = declare.class("terrajava.Lib")
 
-declare.method(Lib, declare.Array(int8), "getClassBytes", {symbol(String, "className")})
+declare.method(Lib,
+  declare.Array(int8), "getClassBytes", {
+    symbol(String, "className")
+  }
+)
 
 
 -- Caller must call :free() the result.
@@ -30,6 +33,8 @@ terra parse_classfile(name : rawstring) : parse.ClassFile
   -- Interpret classfile.
   return parse.from_bytes([&uint8](bs.elements))
 end
+
+declare.reset()
 
 
 function getstr(cf, i)

@@ -32,16 +32,27 @@ notinherited["class"] = true
 notinherited["static"] = true
 notinherited["this"] = true
 
-P.class = terralib.memoize(function(name, ...)
+local cache = {}
+function P.reset()
+  cache = {}
+end
 
-  local bases = {...}
-  if #bases == 0 and name ~= "java.lang.Object" then
-    bases = {P.class("java.lang.Object")}
+function P.class(name, ...)
+
+  local cached = cache[name]
+  if cached then
+    return cached
   end
 
   local struct T {
     _obj : jvm.Object;
   }
+  cache[name] = T
+
+  local bases = {...}
+  if #bases == 0 and name ~= "java.lang.Object" then
+    bases = {P.class("java.lang.Object")}
+  end
 
   T.metamethods.__typename = function(self)
     return name
@@ -122,7 +133,7 @@ P.class = terralib.memoize(function(name, ...)
 
   return T
 
-end)
+end
 
 -- Declares a type with a kind inferred from its name.
 P.type = function(name)
