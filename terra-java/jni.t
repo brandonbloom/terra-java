@@ -1,3 +1,5 @@
+-- This package supplies "jni.h" without namespace-prefix gunk.
+
 local ffi = require "ffi"
 
 local JDK_HOME = os.getenv("JDK_HOME")

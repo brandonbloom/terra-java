@@ -3,8 +3,16 @@ package terrajava;
 import java.lang.ClassLoader;
 import java.io.*;
 
+/**
+ * Supplies static methods needed by the Terra-Java compiler.
+ */
 public class Lib {
 
+  /**
+   * Searches resources and classpath to get the contents of a classfile.
+   * @param name the fully qualified name of the class to find.
+   * @return the bytes of the classfile found.
+   */
   static public byte[] getClassBytes(String name) throws IOException {
     String path = name.replace('.', '/') + ".class";
     InputStream stream = ClassLoader.getSystemResourceAsStream(path);

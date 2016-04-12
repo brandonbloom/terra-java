@@ -11,6 +11,7 @@ P.ENV = ENV
 
 local inits = {}
 
+-- Returns q, but immediately executes it with the embedded JVM implicit.
 local function initq(q)
   (terra()
     var [ENV] = jvm.env
@@ -19,6 +20,7 @@ local function initq(q)
   return q
 end
 
+-- Returns a sequence of all initialization statements for a given class.
 local function collectinits(dst, src)
   table.insert(dst, src.class)
   for _, v in pairs(src.members) do
@@ -50,6 +52,7 @@ function P.class(name, ...)
   }
   cache[name] = T
 
+  -- Get the bases, defaulting to Object if not are specified.
   local bases = {...}
   if #bases == 0 and name ~= "java.lang.Object" then
     bases = {P.class("java.lang.Object")}
@@ -63,6 +66,8 @@ function P.class(name, ...)
   local jvm_name = "L" .. jni_name .. ";"
   jtypes.register(name, jvm_name, T)
 
+  -- Create an initialization record with a statement to find the
+  -- Class and slots for member initialization statements.
   local clazz = global(jni.class)
   inits[T] = {
     class = initq(quote
@@ -104,13 +109,15 @@ function P.class(name, ...)
   T.metamethods.chain = chain
 
   T.metamethods.__cast = function(from, to, expr)
+    -- Allow dropping the JNI Environment.
     if to == jni.object then
       return `expr._obj.this
     end
+    -- Allow up-casts.
     if supers[to] then
       return `to{expr._obj}
     end
-    --TODO: Handle nil.
+    --TODO: Handle nil?
     util.errorf("Unable to cast %s", name)
   end
 
@@ -118,7 +125,7 @@ function P.class(name, ...)
     if notinherited[methodname] then
       return T.methods[methodname]
     end
-    -- Aggregate all method overloads.
+    -- Walk the super chain from the root to aggregate all method overloads.
     --TODO: Omit overridden overloads.
     local ofn = terralib.overloadedfunction(methodname)
     for _, super in ipairs(chain) do
@@ -170,6 +177,7 @@ function P.method(T, ret, name, params)
   local call = ctor and "NewObject"
                or "Call" .. modifier .. jtypes.jni_name(ret) .. "Method"
 
+  -- Record an initialization statement for a method ID.
   local mid = global(jni.methodID)
   inits[T].members[name .. sig] = initq(quote
     mid = ENV:[find](T.class(), name, sig)
@@ -214,6 +222,7 @@ P.field = function(T, static, typ, name)
   local get = "Get" .. modifier .. jtypes.jni_name(typ) .. "Field"
   local set = "Set" .. modifier .. jtypes.jni_name(typ) .. "Field"
 
+  -- Record an initialization statement for a field ID.
   local fid = global(jni.fieldID)
   inits[T].members[name .. " " .. sig] = initq(quote
     fid = ENV:[find](T.class(), name, sig)

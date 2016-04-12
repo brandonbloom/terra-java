@@ -217,15 +217,13 @@ terra ClassFile:free()
 end
 
 
+-- Parses a classfile. Call must :free() the result.
 local terra from_bytes(bytes : &uint8)
   buf = bytes
   var cls : ClassFile
   read(&cls)
   return cls
 end
-
--- local cls = decode("./Foo.class")
--- cls:free()
 
 return {
   ClassFile = ClassFile,

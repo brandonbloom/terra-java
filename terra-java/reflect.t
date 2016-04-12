@@ -39,6 +39,7 @@ end
 declare.reset()
 
 
+-- Looks up a value in the constant table and coerces it to a Lua string.
 function getstr(cf, i)
   if i == 0 then
     return nil
@@ -90,6 +91,8 @@ visit_class = terralib.memoize(function(name)
 
 end)
 
+-- Parses a JNI type signature; returns an array of
+-- parameter types, and the return type.
 local function parse_sig(sig)
   local params = {}
   local ret = {}
@@ -163,6 +166,7 @@ end
 
 local P = {}
 
+-- Reflects on a class by fully qualified name.
 function P.class(name)
   -- Visit the inheritence DAG, returning the root.
   local T = visit_class(name)
@@ -175,6 +179,7 @@ function P.class(name)
   return T
 end
 
+-- Creates a table with a namespace to implicit prefix reflected entries.
 function P.package(name)
   local mt = {
     name = name,

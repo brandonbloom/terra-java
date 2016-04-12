@@ -1,3 +1,9 @@
+-- This package maintains various lookup tables for converting between:
+-- 1) "Java names", as they appear in Java code.
+-- 2) "JVM names", as they appear as data in JVM/JNI operations.
+-- 3) "JNI names", as they appear in JNI library function names.
+-- The declare package extends the tables as new types are encountered.
+
 local util = require "terra-java/util"
 local jni = require "terra-java/jni"
 

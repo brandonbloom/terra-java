@@ -6,7 +6,7 @@ P.fatal = macro(function(fmt, ...)
   fmt = "fatal: " .. fmt:asvalue() .. "\n"
   local arg = {...}
   return quote
-    C.printf(fmt, arg)
+    C.printf(fmt, arg) --XXX stderr
     C.abort()
   end
 end)

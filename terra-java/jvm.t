@@ -1,3 +1,6 @@
+-- This package provides the same notational conveniences that jni.h provides
+-- to C++ programs. For example, Env and Object can be used in an OOP-style.
+
 local ffi = require "ffi"
 local util = require "terra-java/util"
 local jni = require "terra-java/jni"
