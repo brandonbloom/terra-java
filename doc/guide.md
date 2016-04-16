@@ -66,8 +66,12 @@ someGlobal = J.retain(obj)
 J.release(someGlobal)
 ```
 
-You may explicitly release local references if you want to free their
-resources early.
+Global references have type `Ref(T)` and act as method proxies to underlying
+object of that type. Refs will automatically stripped where a value
+of the underlying type is expected.
+
+Local references may be explicitly released in order to free their resources
+early.
 
 When interacting with the embedded JVM, the Lua process is effectively a giant
 native callback. All local references acquired from the embedded JVM should be
@@ -128,14 +132,21 @@ end
 ## Statics
 
 Static members don't need a _this_ reference, but still need a JNI environment.
-You can create an object with an environment and a null _this_ reference via
-the "J.static" macro:
+To create an object with an environment and a null _this_ reference, use the
+`J.static` macro:
 
 ```lua
 terra pi()
   J.embedded()
   return J.static(Math):toRadians(180)
 end
+```
+
+Java also provides a synthetic static `.class` field, which returns the type's
+`java.lang.Type` object. For this, Terra-Java provides the `J.class` macro:
+
+```lua
+J.class(Math):getName() -- returns "java.util.Math"
 ```
 
 ## Arrays

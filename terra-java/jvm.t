@@ -1,5 +1,6 @@
 -- This package provides the same notational conveniences that jni.h provides
 -- to C++ programs. For example, Env and Object can be used in an OOP-style.
+-- Also provided is the embedded JVM for metaprogramming and scripting use.
 
 local ffi = require "ffi"
 local util = require "terra-java/util"
@@ -16,7 +17,7 @@ local struct Object {
 }
 
 Env.metamethods.__methodmissing = macro(function(name, self, ...)
-  local args = terralib.newlist({...})
+  local args = {...}
   return `(@self.jni).[name](self.jni, [args])
 end)
 

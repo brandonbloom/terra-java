@@ -31,6 +31,7 @@ end
 local notinherited = {}
 notinherited["<init>"] = true
 --XXX Eliminate these, just make them J.class, J.static, and J.this
+--XXX maybe they can just be metamethods?
 notinherited["class"] = true
 notinherited["static"] = true
 notinherited["this"] = true
@@ -108,7 +109,7 @@ function P.class(name, ...)
   table.insert(chain, T)
   T.metamethods.chain = chain
 
-  T.metamethods.__cast = function(from, to, expr)
+  function T.metamethods.__cast(from, to, expr)
     -- Allow dropping the JNI Environment.
     if to == jni.object then
       return `expr._obj.this
@@ -121,7 +122,7 @@ function P.class(name, ...)
     util.errorf("Unable to cast %s", name)
   end
 
-  T.metamethods.__getmethod = function(self, methodname)
+  function T.metamethods.__getmethod(self, methodname)
     if notinherited[methodname] then
       return T.methods[methodname]
     end
@@ -244,6 +245,7 @@ P.field = function(T, static, typ, name)
 
 end
 
+--XXX should this be a macro? Ref(T) too?
 P.Array = terralib.memoize(function(T)
 
   local struct A {
