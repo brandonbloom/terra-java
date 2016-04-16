@@ -8,11 +8,11 @@ local P = {
   embedded = declare.embedded,
   Array = declare.Array,
   new = declare.new,
-  class = declare.class,
+  class = declare.getclass,
   package = reflect.package,
   implement = define.implement,
-  retain = jvm.retain,
-  release = jvm.release
+  retain = ref.retain,
+  release = ref.release
 }
 
 for k, v in pairs(types.java_primitives) do

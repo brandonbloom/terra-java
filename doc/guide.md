@@ -143,7 +143,7 @@ end
 ```
 
 Java also provides a synthetic static `.class` field, which returns the type's
-`java.lang.Type` object. For this, Terra-Java provides the `J.class` macro:
+`java.lang.Class` object. For this, Terra-Java provides the `J.class` macro:
 
 ```lua
 J.class(Math):getName() -- returns "java.util.Math"

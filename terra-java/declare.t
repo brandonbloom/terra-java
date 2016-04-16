@@ -351,9 +351,13 @@ P.embedded = macro(function()
   return quote var [ENV] = jvm.env end
 end)
 
-P.new = macro(function(class, ...)
+P.new = macro(function(T, ...)
   local args = {...}
-  return `class.static():new(args)
+  return `T.static():new(args)
+end)
+
+P.getclass = macro(function(T)
+  return `T.class()
 end)
 
 return P

@@ -1,4 +1,7 @@
-local jni = require "jni"
+local jni = require "terra-java/jni"
+local declare = require "terra-java/declare"
+
+local ENV = declare.ENV
 
 local Ref = terralib.memoize(function(T)
 
@@ -34,11 +37,11 @@ P.Ref = Ref
 
 P.retain = macro(function(x)
   local T = x:gettype()
-  `return Ref(T){ _obj = ENV:NewGlobalRef(x) }
+  return `Ref(T){ _obj = ENV:NewGlobalRef(x) }
 end)
 
 P.release = macro(function(x)
-  local typ = x:astype()
+  local typ = x:gettype()
   if typ.isglobalref then
     return `ENV:DeleteGlobalRef(x._obj)
   else

@@ -4,6 +4,7 @@ local declare = require "terra-java/declare"
 local parse = require "terra-java/parse"
 local util = require "terra-java/util"
 local C = require "terra-java/c"
+local ref = require "terra-java/ref"
 
 local ENV = declare.ENV
 
