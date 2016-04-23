@@ -4,6 +4,8 @@ local C = terralib.includec("stdio.h")
 local lang = J.package("java.lang")
 local Math = lang.Math
 
+--XXX Add J.release calls as needed to this file.
+
 terra pi()
   J.embedded()
   return Math.static():toRadians(180)

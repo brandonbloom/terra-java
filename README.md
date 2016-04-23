@@ -18,12 +18,48 @@ Terra-Java can generate JVM extensions without a Terra-Java dependency.
 
 ## Status
 
-This project is a work-in-progress. Nothing really works as advertised yet.
+This project is a work-in-progress. Some things do not work as advertised yet.
 
 
-## Getting Started
+## Quick Start
+
+### Dependencies & Configuration
+
+Install Terra and the JDK, then set the following environment variables:
+
+- `INCLUDE_PATH`: Terra looks here for standard C headers.
+- `JDK_HOME`: Terra-Java looks here for Java headers and libjvm.
+
+To use Terra-Java from your own Terra project, add the directory containing
+`terra-java.t` to one additional environment variable:
+
+- `TERRA_PATH`: Terra's version of `LUA_PATH`.
+
+### Build
+
+Compile the Terra-Java runtime and examples:
+
+```bash
+./build.sh
+```
+
+### Running Examples
+
+Run Terra code that interops with the JVM:
+
+```bash
+terra ./terra-java/examples/interop.t
+```
+
+Run JVM code that utilizes native extensions:
+
+```bash
+#XXX include librarypath on command line
+java -classpath ./obj terrajava.examples.extension.Accumulator
+```
+
+
+## Usage
 
 Check out [the examples](./terra-java/examples), then see
 [the guide](./doc/guide.md) for many more details
-
-To run the examples, consult the guide for configuration instructions.

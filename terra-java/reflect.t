@@ -20,15 +20,18 @@ declare.method(Lib,
 )
 
 
--- Caller must call :free() the result.
+-- Caller must :free() the result.
 terra parse_classfile(name : rawstring) : parse.ClassFile
   declare.embedded()
 
   -- Get classfile bytes.
   var lib = Lib.static()
-  var name = String.this(ENV:NewStringUTF(name)) --TODO: String factory.
-  defer ref.release(name)
-  var byteArr = lib:getClassBytes(name)
+  var jname = String.this(ENV:NewStringUTF(name)) --TODO: String factory.
+  defer ref.release(jname)
+  var byteArr = lib:getClassBytes(jname)
+  if declare.null(byteArr) then
+    util.fatal("Cannot find class file for name: %s", name)
+  end
   defer ref.release(byteArr)
   var bs = byteArr:retain()
   defer bs:release()

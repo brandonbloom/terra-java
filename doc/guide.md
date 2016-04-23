@@ -12,25 +12,19 @@ helpful for many tasks, but should not be required.
 Experience with [Lua/Terra][2] and low-level programming is assumed.
 
 
-# Configuration
+# Requiring
 
-The following environment variables should be set:
-
-- `INCLUDE_PATH`: Used by Terra to find standard C headers.
-- `TERRA_PATH`: Add to this the root directory of Terra-Java.
-- `JDK_HOME`: Terra-Java uses this to find Java headers and libjvm.
-
-Then load Terra-Java like this:
+All code snippets in this document assume Terra-Java is required as follows:
 
 ```lua
 local J = require "terra-java"
 ```
 
 
-# JNI Environments and Terra-Java Objects
+# JNI Environments and Wrapper Objects
 
 All JNI operations require an environment object. Terra-Java wrapper objects
-contain references to both an environment and _this_. Methods on a Terra-Java
+contain references to both an environment and _this_. Methods on a wrapper
 object will supply the environment automatically.
 
 If a raw JNI object is required, an implicit conversation will extract the
@@ -80,12 +74,12 @@ explicitly released.
 
 ## Thread-Safety
 
-JNI Environments are _not thread safe_. Therefore, Terra-Java objects
+JNI Environments are _not thread safe_. Therefore, wrapper objects
 are also not thread safe. Since Lua and the Terra compiler are single
 threaded, the lack of thread safety is not an issue for the embedded JVM.
 
 Using `J.acquire` to create a global reference will strip the environment
-from a Terra-Java object. The global reference can then be used safely on
+from a wrapper object. The global reference can then be used safely on
 any thread in code where a substitute JNI environment is available.
 
 
@@ -129,11 +123,20 @@ terra move(p : Point, dx : int, dy : int)
 end
 ```
 
+## Null
+
+Object wrappers are not pointers and therefore cannot be `nil`. To check for
+null object references, use the `J.null` predicate macro:
+
+```lua
+J.null(obj)
+```
+
 ## Statics
 
-Static members don't need a _this_ reference, but still need a JNI environment.
-To create an object with an environment and a null _this_ reference, use the
-`J.static` macro:
+Static members can be used like any other member on an object instance
+wrapper. To access statics without an instance, create a wrapper with a
+null reference using the `J.static` macro:
 
 ```lua
 terra pi()
@@ -178,6 +181,10 @@ end
 ```
 
 ## Strings
+
+TODO
+
+## Exceptions
 
 TODO
 

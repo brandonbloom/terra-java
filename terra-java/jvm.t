@@ -26,6 +26,12 @@ Object.metamethods.__methodmissing = macro(function(name, self, ...)
   return `self.env:[name](self.this, [args])
 end)
 
+-- Compute CLASS_PATH for Terra-Java classes.
+local rel = "/terra-java/jvm.t"
+local here = package.searchpath("terra-java/jvm", package.terrapath)
+local obj = here:sub(1, #here - #rel) .. "/obj"
+local option = "-Djava.class.path=" .. obj
+
 local terra init() : Env
 
   var args : jni.VMInitArgs
@@ -34,7 +40,7 @@ local terra init() : Env
   var optsSize = sizeof(jni.VMOption) * args.nOptions
   args.options = [&jni.VMOption](C.malloc(optsSize))
   defer C.free(args.options)
-  args.options[0].optionString = "-Djava.class.path=./obj" --XXX absolute path.
+  args.options[0].optionString = option
 
   var res = jni.GetDefaultJavaVMInitArgs(&args)
   if res < 0 then

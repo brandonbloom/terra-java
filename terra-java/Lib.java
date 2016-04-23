@@ -16,6 +16,9 @@ public class Lib {
   static public byte[] getClassBytes(String name) throws IOException {
     String path = name.replace('.', '/') + ".class";
     InputStream stream = ClassLoader.getSystemResourceAsStream(path);
+    if (stream == null) {
+      return null;
+    }
     return toByteArray(stream);
   }
 

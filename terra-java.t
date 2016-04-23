@@ -7,6 +7,7 @@ local ref = require "terra-java/ref"
 local P = {
   embedded = declare.embedded,
   Array = declare.Array,
+  null = declare.null,
   new = declare.new,
   class = declare.getclass,
   package = reflect.package,

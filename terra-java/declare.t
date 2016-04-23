@@ -12,6 +12,7 @@ P.ENV = ENV
 local inits = {}
 
 -- Returns q, but immediately executes it with the embedded JVM implicit.
+--XXX Don't execute immediately or add to final init code if not actually used.
 local function initq(q)
   (terra()
     var [ENV] = jvm.env
@@ -349,6 +350,10 @@ end
 
 P.embedded = macro(function()
   return quote var [ENV] = jvm.env end
+end)
+
+P.null = macro(function(x)
+  return `x._obj.this == nil
 end)
 
 P.new = macro(function(T, ...)
