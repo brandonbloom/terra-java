@@ -25,7 +25,8 @@ This project is a work-in-progress. Some things do not work as advertised yet.
 
 ### Dependencies & Configuration
 
-Install Terra and the JDK, then set the following environment variables:
+Install [Terra 2016-03-25][1] and the JDK, then set the following environment
+variables:
 
 - `INCLUDE_PATH`: Terra looks here for standard C headers.
 - `JDK_HOME`: Terra-Java looks here for Java headers and libjvm.
@@ -63,3 +64,6 @@ java -classpath ./obj terrajava.examples.extension.Accumulator
 
 Check out [the examples](./terra-java/examples), then see
 [the guide](./doc/guide.md) for many more details
+
+
+[1]: https://github.com/zdevito/terra/releases/tag/release-2016-03-25
