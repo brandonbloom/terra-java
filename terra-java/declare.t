@@ -134,11 +134,23 @@ function P.class(name, ...)
     local ofn = terralib.overloadedfunction(methodname)
     for _, super in ipairs(chain) do
       local basemethod = super.methods[methodname]
-      if basemethod then
-        for _, def in ipairs(basemethod:getdefinitions()) do
-          ofn:adddefinition(def)
-          -- Mark associated initialization statements as in use.
-          use_init(inits[def])
+      -- No init will be found if the method is overridden, which is
+      -- expected when defining extensions.
+      local defs = {}
+      if terralib.type(basemethod) == "overloadedterrafunction" then
+        defs = basemethod:getdefinitions()
+      elseif terralib.type(basemethod) == "terrafunction" then
+        -- While all reflected methods are overloaded,
+        -- native extension definitions are not required to be.
+        defs = {basemethod}
+      end
+      for _, def in ipairs(defs) do
+        ofn:adddefinition(def)
+        -- Mark associated initialization statements as in use.
+        -- Native extension definitions don't need an init.
+        local init = inits[def]
+        if init then
+          use_init(init)
         end
       end
     end
