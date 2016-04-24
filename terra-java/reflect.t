@@ -188,13 +188,16 @@ end
 
 -- Creates a table with a namespace to implicit prefix reflected entries.
 function P.package(name)
+  local tbl = {}
   local mt = {
     name = name,
     __index = function(tbl, key)
-      return P.class(name .. "." .. key)
+      local cls = P.class(name .. "." .. key)
+      tbl[key] = cls
+      return cls
     end,
   }
-  return setmetatable({}, mt)
+  return setmetatable(tbl, mt)
 end
 
 return P
