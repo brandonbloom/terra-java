@@ -237,10 +237,10 @@ TODO
 
 To create a JVM native extension, follow these steps:
 
-1) Generate a JVM classfile; eg. compile some Java.
-2) Reflect on that class via `J.package`.
-2) Redefine some methods on the Terra structure.
-3) Call `J.savelib` to produce a native library.
+1. Generate a JVM classfile; eg. compile some Java.
+2. Reflect on that class via `J.package`.
+3. Redefine some methods on the Terra structure.
+4. Call `J.savelib` to produce a native library.
 
 Each step is described in more detail in the sections below.
 
