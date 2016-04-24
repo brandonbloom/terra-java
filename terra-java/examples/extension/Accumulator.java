@@ -3,7 +3,7 @@ package terrajava.examples.extension;
 public class Accumulator {
 
   static {
-    //System.loadLibrary("extension");
+    System.loadLibrary("extension");
   }
 
   private double value;

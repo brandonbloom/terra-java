@@ -16,14 +16,30 @@ end
 
 -- Parameters and overloading.
 Accumulator.methods.add = terralib.overloadedfunction("add", {
-  terra(self : Accumulator, x : J.int)
-    self:add([double](x))
-  end,
+
   terra(self : Accumulator, x : J.double)
     self:value(self:value() + x)
+  end,
+
+  terra(self : Accumulator, x : J.int)
+    self:add([double](x)) -- XXX huh, broken?
   end
+
 })
 
-J.savelib("./obj", ext)
+-- Compile the package's native extensions to `libextension.jnilib`.
+J.savelib("./obj", "extension", ext)
 
--- XXX Do stuff with the extension.
+
+-- Use the extension immediately.
+
+terra f()
+  J.embedded()
+  var acc = J.new(Accumulator)
+  acc:add(5)
+  acc:add(2.5)
+  return acc:getValue()
+end
+
+J.load()
+print(f())

@@ -24,16 +24,43 @@ function P.exports(package)
     return jvm.version
   end
 
-  -- XXX: accumulate terra functions from methods on class objects in pkg
+  local pkg = getmetatable(package).name
+  for cls, T in pairs(package) do
+    print(cls, T)
+    for name, method in pairs(T.methods) do
+
+      -- Un-overload single-signature methods.
+      if terralib.type(method) == "overloadedterrafunction" then
+        local defs = method:getdefinitions()
+        if #defs == 1 then
+          method = defs[1]
+        end
+      end
+
+      -- Export each overload.
+      if terralib.type(method) == "overloadedterrafunction" then
+        for _, def in ipairs(method:getdefinitions()) do
+          print("", name, def:gettype()) --XXX export
+        end
+
+      -- Export the only overload.
+      elseif terralib.type(method) == "terrafunction" then
+        print("", name) --XXX export
+
+      else
+        error("Unexpected type of method: " .. terralib.type(method))
+      end
+
+    end
+  end
 
   return exports
 
 end
 
-function P.savelib(dirname, package)
+function P.savelib(dirname, name, package)
   local exports = P.exports(package)
-  local name = "BLAH" --XXX get from package
-  local filename = dirname .. "/" .. name .. ".jnilib"
+  local filename = dirname .. "/lib" .. name .. ".jnilib"
   terralib.saveobj(filename, "sharedlibrary", exports)
 end
 
