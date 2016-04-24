@@ -5,16 +5,15 @@ local lang = J.package("java.lang")
 local util = J.package("java.util")
 local Math = lang.Math
 
---XXX Add J.release calls as needed to this file.
-
 terra pi()
   J.embedded()
-  return Math.static():toRadians(180)
+  return J.static(Math):toRadians(180)
 end
 
 terra minute()
   J.embedded()
   var now = J.new(util.Date)
+  defer J.release(now)
   return now:getMinutes()
 end
 

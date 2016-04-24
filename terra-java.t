@@ -10,6 +10,7 @@ local P = {
   null = declare.null,
   new = declare.new,
   class = declare.getclass,
+  static = declare.static,
   package = reflect.package,
   retain = ref.retain,
   release = ref.release

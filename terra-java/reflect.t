@@ -25,8 +25,8 @@ terra parse_classfile(name : rawstring) : parse.ClassFile
   declare.embedded()
 
   -- Get classfile bytes.
-  var lib = Lib.static()
-  var jname = String.this(ENV:NewStringUTF(name)) --TODO: String factory.
+  var lib = declare.static(Lib)
+  var jname = declare.this(String, ENV:NewStringUTF(name)) --XXX String factory
   defer ref.release(jname)
   var byteArr = lib:getClassBytes(jname)
   if declare.null(byteArr) then

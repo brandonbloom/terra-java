@@ -48,17 +48,11 @@ function P.load()
   pending = {}
 end
 
-local notinherited = {}
-notinherited["<init>"] = true
---XXX Eliminate these, just make them J.class, J.static, and J.this
---XXX maybe they can just be metamethods?
-notinherited["class"] = true
-notinherited["static"] = true
-notinherited["this"] = true
-
 local cache = {}
+local classes = {}
 function P.reset()
   cache = {}
+  classes = {}
 end
 
 function P.class(name, ...)
@@ -96,24 +90,10 @@ function P.class(name, ...)
       util.fatal(["Class not found: " .. name])
     end
   end)
+  classes[T] = clazz
 
   -- Always load any mentioned class.
   use_init(inits[T])
-
-  -- These special methods are all reserved words in Java, so it's OK :-)
-
-  T.methods.this = macro(function(this)
-    return `T{jvm.Object{env = ENV, this = this}}
-  end)
-
-  T.methods.static = macro(function()
-    return `T{jvm.Object{env = ENV, this = nil}}
-  end)
-
-  -- Like the ".class" syntax in Java, but with parens.
-  T.methods.class = terra()
-    return clazz
-  end
 
   -- Build set of super classes and dispatch chain from top of hierarchy down.
   local chain = {}
@@ -143,10 +123,9 @@ function P.class(name, ...)
   end
 
   function T.metamethods.__getmethod(self, methodname)
-    if notinherited[methodname] then
-      return T.methods[methodname]
-    end
-    -- Walk the super chain from the root to aggregate all method overloads.
+    local notinherited = (methodname == "<init>")
+    local search = notinherited and {T} or chain
+    -- Walk the search chain from the root to aggregate all method overloads.
     --XXX Omit overridden overloads.
     local ofn = terralib.overloadedfunction(methodname)
     for _, super in ipairs(chain) do
@@ -183,7 +162,7 @@ local convert = macro(function(T, expr)
   if jtypes.primitive(T:astype()) then
     return expr
   end
-  return `T.this(expr)
+  return `P.this(T, expr)
 end)
 
 function P.method(T, ret, name, params)
@@ -192,7 +171,7 @@ function P.method(T, ret, name, params)
   local static = (#params == 0 or params[1].displayname ~= "self")
   local self = static and symbol(T, "self") or params[1]
   local target = (ctor or static)
-                 and (`jvm.Object{[ENV], T.class()}) or (`self._obj)
+                 and (`jvm.Object{[ENV], [classes[T]]}) or (`self._obj)
   params = static and params or util.popl(params)
   local sig = jtypes.jvm_sig(ret, params)
   local modifier = static and "Static" or ""
@@ -217,17 +196,13 @@ function P.method(T, ret, name, params)
 
   -- Record an initialization statement for a method ID.
   inits[fn] = initq(quote
-    mid = ENV:[find](T.class(), name, sig)
+    mid = ENV:[find]([classes[T]], name, sig)
     if mid == nil then
       util.fatal([
         ("Method not found: %s %s.%s%s\n"):format(T, modifier, name, sig)
       ])
     end
   end)
-
-  if ctor then
-    name = "new"
-  end
 
   if not T.methods[name] then
     T.methods[name] = terralib.overloadedfunction(name)
@@ -260,7 +235,7 @@ P.field = function(T, static, typ, name)
 
   -- Record an initialization statement for a field ID.
   local init = initq(quote
-    fid = ENV:[find](T.class(), name, sig)
+    fid = ENV:[find]([classes[T]], name, sig)
     if fid == nil then
       util.fatal([
         ("Field not found: %s %s.%s%s\n"):format(T, modifier, name, sig)
@@ -370,13 +345,21 @@ P.null = macro(function(x)
   return `x._obj.this == nil
 end)
 
+P.this = macro(function(T, this)
+  return `T{jvm.Object{env = ENV, this = this}}
+end)
+
+P.static = macro(function(T)
+  return `P.this(T, nil)
+end)
+
 P.new = macro(function(T, ...)
   local args = {...}
-  return `T.static():new(args)
+  return `P.static(T):["<init>"](args)
 end)
 
 P.getclass = macro(function(T)
-  return `T.class()
+  return classes[T]
 end)
 
 return P
