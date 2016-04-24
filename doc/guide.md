@@ -16,8 +16,8 @@ Experience with [Lua/Terra][2] and low-level programming is assumed.
 
 Terra-Java code executes in one of two contexts:
 
-1) Embedded in a Lua/Terra interpreter.
-2) As a native extension of the JVM.
+1. Embedded in a Lua/Terra interpreter.
+2. As a native extension of the JVM.
 
 When embedding in Lua, which includes during extension compilation, Terra-Java
 runs a private JVM via the JNI Invocation API.
