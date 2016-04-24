@@ -1,7 +1,7 @@
 **WORK IN PROGRESS**
 
-This document is currently more of a goals / design-doc than usage reference.
-That is, most of this stuff doesn't work, or doesn't work with this syntax.
+A handful of things in this doc are aspirational, so don't be surprised if
+something doesn't work exaclty as advertised. Feel free to file an issue!
 
 
 # Background
@@ -235,8 +235,69 @@ TODO
 
 # Native Extensions
 
-TODO
+To create a JVM native extension, follow these steps:
 
+1) Generate a JVM classfile; eg. compile some Java.
+2) Reflect on that class via `J.package`.
+2) Redefine some methods on the Terra structure.
+3) Call `J.savelib` to produce a native library.
+
+Each step is described in more detail in the sections below.
+
+## Compiling Java with Native Declarations
+
+In one or more `.java` files, declare some methods with the `native` keyword.
+For example:
+
+```java
+class Foo {
+  public native int someMethod(String str, int x);
+  // ...
+}
+```
+
+In some central class of the extension package, create a static initializer to
+load the native library:
+
+```java
+class Bar {
+  static {
+    System.loadLibrary("myext")
+  }
+  // ...
+}
+```
+
+Then compile the `.java` files in to `.class` files normally.
+
+## Implementing Native Methods
+
+Simply define methods on Terra-Java wrappers like any normal Terra struct.
+
+```lua
+local myext = J.package("myext")
+local Foo = myext.Foo
+
+terra Foo:someMethod(str : lang.String, x : J.int)
+  -- ...
+end
+```
+
+## Compiling A Native Extension Library
+
+Use the `J.savelib` function.
+
+```lua
+J.savelib("./out", "myext", myext)
+```
+
+This will produce `./out/libmyext.jnilib`.
+
+
+## Using The native Extension
+
+Don't forget to set Java's `-librarypath` property to include the path of
+your `.jnilib` file!
 
 
 [1]: http://docs.oracle.com/javase/7/docs/technotes/guides/jni/spec/jniTOC.html
