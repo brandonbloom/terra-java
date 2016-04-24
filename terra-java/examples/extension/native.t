@@ -5,7 +5,7 @@ local Accumulator = ext.Accumulator
 
 -- Return values and Java method interop.
 terra Accumulator:isPos() : J.boolean
-  return self:sign() == 1.0
+  return [J.boolean](self:sign() == 1.0)
 end
 
 -- C interop.

@@ -12,6 +12,20 @@ helpful for many tasks, but should not be required.
 Experience with [Lua/Terra][2] and low-level programming is assumed.
 
 
+# Embedding vs Extending
+
+Terra-Java code executes in one of two contexts:
+
+1) Embedded in a Lua/Terra interpreter.
+2) As a native extension of the JVM.
+
+When embedding in Lua, which includes during extension compilation, Terra-Java
+runs a private JVM via the JNI Invocation API.
+
+When extending the JVM, Terra-Java code is indistinguishable from traditional
+JNI native extensions. There are no run-time dependencies.
+
+
 # Requiring
 
 All code snippets in this document assume Terra-Java is required as follows:
@@ -37,11 +51,40 @@ environment must be declared in the terra function.
 For metaprogramming and scripting, declare the embedded JVM:
 
 ```lua
-J.embedded()
+terra f()
+  J.embedded()
+  -- Use JVM here ...
+end
 ```
 
 For callbacks from the JVM, such as when implementing native extensions,
 do SOMETHING YET TO BE DOCUMENTED. XXX
+
+
+# Initialization
+
+Traditional JNI requires many explicit reflective operations to load classes
+and to resolve members. Terra-Java automatically identifies necessary calls
+to functions such as FindClass and GetMethodID.
+
+When using the embedded JVM, the generated initialization logic must be run
+explicitly before execution of code that uses any newly encountered classes or
+members. This is accomplished by the `J.load` Lua function:
+
+```
+terra f()
+  -- Use new classes or members here...
+end
+
+J.load()
+
+f()
+```
+
+Loading is incremental and idempotent.
+
+For native extensions, `J.load` is unnecessary. A full implementation of
+`JNI_OnLoad` will be provided automatically.
 
 
 ## Object Lifetime

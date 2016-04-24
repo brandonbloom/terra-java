@@ -40,6 +40,7 @@ terra parse_classfile(name : rawstring) : parse.ClassFile
   return parse.from_bytes([&uint8](bs.elements))
 end
 
+declare.load()
 declare.reset()
 
 
@@ -120,7 +121,7 @@ local function parse_sig(sig)
     end
     if typ then
       if array then
-        typ = declare.array(typ)
+        typ = declare.Array(typ)
         array = false
       end
       table.insert(target, typ)

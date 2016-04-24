@@ -9,24 +9,43 @@ local P = {}
 local ENV = symbol(jvm.Env, "env")
 P.ENV = ENV
 
+-- A map of objects to init tables consisting of `q`, a quote of initialization
+-- code, and boolean `used`.
 local inits = {}
 
--- Returns q, but immediately executes it with the embedded JVM implicit.
---XXX Don't execute immediately or add to final init code if not actually used.
 local function initq(q)
-  (terra()
-    var [ENV] = jvm.env
-    [q]
-  end)()
-  return q
+  return {used = false, q = q}
 end
 
--- Returns a sequence of all initialization statements for a given class.
-local function collectinits(dst, src)
-  table.insert(dst, src.class)
-  for _, v in pairs(src.members) do
-    table.insert(dst, v)
+-- Returns all used init quotes.
+function P.used_inits()
+  local ret = {}
+  for _, init in pairs(inits) do
+    if init.used then
+      table.insert(ret, init.q)
+    end
   end
+  return ret
+end
+
+local pending = {}
+
+-- Marks an init as used and adds it t
+local function use_init(init)
+  if init.used then
+    return
+  end
+  init.used = true
+  table.insert(pending, init.q)
+end
+
+-- Runs all pending inits.
+function P.load()
+  (terra()
+    var [ENV] = jvm.env
+    [pending]
+  end)()
+  pending = {}
 end
 
 local notinherited = {}
@@ -71,15 +90,15 @@ function P.class(name, ...)
   -- Create an initialization record with a statement to find the
   -- Class and slots for member initialization statements.
   local clazz = global(jni.class)
-  inits[T] = {
-    class = initq(quote
-      clazz = ENV:FindClass(jni_name)
-      if clazz == nil then
-        util.fatal(["Class not found: " .. name])
-      end
-    end),
-    members = {},
-  }
+  inits[T] = initq(quote
+    clazz = ENV:FindClass(jni_name)
+    if clazz == nil then
+      util.fatal(["Class not found: " .. name])
+    end
+  end)
+
+  -- Always load any mentioned class.
+  use_init(inits[T])
 
   -- These special methods are all reserved words in Java, so it's OK :-)
 
@@ -128,13 +147,15 @@ function P.class(name, ...)
       return T.methods[methodname]
     end
     -- Walk the super chain from the root to aggregate all method overloads.
-    --TODO: Omit overridden overloads.
+    --XXX Omit overridden overloads.
     local ofn = terralib.overloadedfunction(methodname)
     for _, super in ipairs(chain) do
       local basemethod = super.methods[methodname]
       if basemethod then
         for _, def in ipairs(basemethod:getdefinitions()) do
           ofn:adddefinition(def)
+          -- Mark associated initialization statements as in use.
+          use_init(inits[def])
         end
       end
     end
@@ -179,9 +200,23 @@ function P.method(T, ret, name, params)
   local call = ctor and "NewObject"
                or "Call" .. modifier .. jtypes.jni_name(ret) .. "Method"
 
-  -- Record an initialization statement for a method ID.
+  local args = terralib.newlist(params):map(function(param)
+    local cast = jtypes.jni_type(param.type)
+    return `[cast](param)
+  end)
+
+  if ctor then
+    ret = T
+  end
+
   local mid = global(jni.methodID)
-  inits[T].members[name .. sig] = initq(quote
+  local fn = terra([self], [params]) : ret
+    var [ENV] = self._obj.env
+    return convert(ret, target:[call](mid, [args]))
+  end
+
+  -- Record an initialization statement for a method ID.
+  inits[fn] = initq(quote
     mid = ENV:[find](T.class(), name, sig)
     if mid == nil then
       util.fatal([
@@ -190,19 +225,8 @@ function P.method(T, ret, name, params)
     end
   end)
 
-  local args = terralib.newlist(params):map(function(param)
-    local cast = jtypes.jni_type(param.type)
-    return `[cast](param)
-  end)
-
   if ctor then
     name = "new"
-    ret = T
-  end
-
-  local fn = terra([self], [params]) : ret
-    var [ENV] = self._obj.env
-    return convert(ret, target:[call](mid, [args]))
   end
 
   if not T.methods[name] then
@@ -224,9 +248,18 @@ P.field = function(T, static, typ, name)
   local get = "Get" .. modifier .. jtypes.jni_name(typ) .. "Field"
   local set = "Set" .. modifier .. jtypes.jni_name(typ) .. "Field"
 
-  -- Record an initialization statement for a field ID.
+  -- Define accessor methods.
   local fid = global(jni.fieldID)
-  inits[T].members[name .. " " .. sig] = initq(quote
+  local getter = terra(self : T)
+    return self._obj:[get](fid)
+  end
+  local setter = terra(self : T, value : typ)
+    self._obj:[set](fid, value)
+  end
+  T.methods[name] = terralib.overloadedfunction(name, {getter, setter})
+
+  -- Record an initialization statement for a field ID.
+  local init = initq(quote
     fid = ENV:[find](T.class(), name, sig)
     if fid == nil then
       util.fatal([
@@ -234,15 +267,8 @@ P.field = function(T, static, typ, name)
       ])
     end
   end)
-
-  -- Define accessor methods.
-  T.methods[name] = terralib.overloadedfunction(name)
-  T.methods[name]:adddefinition(terra(self : T)
-    return self._obj:[get](fid)
-  end)
-  T.methods[name]:adddefinition(terra(self : T, value : typ)
-    self._obj:[set](fid, value)
-  end)
+  inits[getter] = init
+  inits[setter] = init
 
 end
 
@@ -333,18 +359,6 @@ end)
 for name, T in pairs(jtypes.java_primitives) do
   if name ~= "void" then
     P.Array(T)
-  end
-end
-
---XXX: use me by exporting JNI_OnLoad when compiling a jnilib
-function allinits()
-  local xs = {}
-  for _, v in pairs(inits) do
-    collectinits(xs, v)
-  end
-  return terra()
-    var [ENV] = jvm.env
-    [xs]
   end
 end
 
