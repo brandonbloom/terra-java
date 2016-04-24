@@ -2,6 +2,7 @@ local types = require "terra-java/types"
 local declare = require "terra-java/declare"
 local reflect = require "terra-java/reflect"
 local ref = require "terra-java/ref"
+local extend = require "terra-java/extend"
 
 local P = {
   load = declare.load,
@@ -13,7 +14,9 @@ local P = {
   static = declare.static,
   package = reflect.package,
   retain = ref.retain,
-  release = ref.release
+  release = ref.release,
+  exports = extend.exports,
+  savelib = extend.savelib,
 }
 
 for k, v in pairs(types.java_primitives) do

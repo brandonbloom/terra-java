@@ -1,3 +1,5 @@
+-- This file reflects on Java classfiles to automate declarations.
+
 local ffi = require "ffi"
 local jvm = require "terra-java/jvm"
 local declare = require "terra-java/declare"

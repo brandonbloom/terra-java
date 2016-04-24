@@ -24,6 +24,6 @@ Accumulator.methods.add = terralib.overloadedfunction("add", {
   end
 })
 
--- J.export(ext, ".")
+J.savelib("./obj", ext)
 
--- DO_STUFF_WITH_IT
+-- XXX Do stuff with the extension.

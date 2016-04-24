@@ -1,3 +1,5 @@
+-- This file implements a generic type for JNI global references.
+
 local jni = require "terra-java/jni"
 local declare = require "terra-java/declare"
 

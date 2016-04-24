@@ -7,6 +7,10 @@ local util = require "terra-java/util"
 local jni = require "terra-java/jni"
 local C = require "terra-java/c"
 
+local struct VM {
+  jni : &jni.VM;
+}
+
 local struct Env {
   jni : &jni.Env;
 }
@@ -15,6 +19,11 @@ local struct Object {
   env : Env;
   this : jni.object;
 }
+
+VM.metamethods.__methodmissing = macro(function(name, self, ...)
+  local args = {...}
+  return `(@self.jni).[name](self.jni, [args])
+end)
 
 Env.metamethods.__methodmissing = macro(function(name, self, ...)
   local args = {...}
@@ -32,10 +41,12 @@ local here = package.searchpath("terra-java/jvm", package.terrapath)
 local obj = here:sub(1, #here - #rel) .. "/obj"
 local option = "-Djava.class.path=" .. obj
 
+local version = jni.VERSION_1_6
+
 local terra init() : Env
 
   var args : jni.VMInitArgs
-  args.version = jni.VERSION_1_6
+  args.version = version
   args.nOptions = 1
   var optsSize = sizeof(jni.VMOption) * args.nOptions
   args.options = [&jni.VMOption](C.malloc(optsSize))
@@ -59,6 +70,8 @@ local terra init() : Env
 end
 
 return {
+  version = version,
+  VM = VM,
   Env = Env,
   Object = Object,
   env = init()

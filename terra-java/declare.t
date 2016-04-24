@@ -1,3 +1,7 @@
+-- This file generates wrapper objects and initialization logic in response to
+-- declarations of classes, their members, and array types. It also provides
+-- macros for static operations on JVM types.
+
 local C = require "terra-java/c"
 local jni = require "terra-java/jni"
 local jvm = require "terra-java/jvm"
@@ -355,6 +359,7 @@ end)
 
 P.new = macro(function(T, ...)
   local args = {...}
+  --XXX Handle T being an array type.
   return `P.static(T):["<init>"](args)
 end)
 
