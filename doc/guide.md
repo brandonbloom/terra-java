@@ -65,7 +65,7 @@ do SOMETHING YET TO BE DOCUMENTED. XXX
 
 Traditional JNI requires many explicit reflective operations to load classes
 and to resolve members. Terra-Java automatically identifies necessary calls
-to functions such as FindClass and GetMethodID.
+to functions such as `FindClass` and `GetMethodID`.
 
 When using the embedded JVM, the generated initialization logic must be run
 explicitly before execution of code that uses any newly encountered classes or
@@ -104,7 +104,7 @@ J.release(someGlobal)
 ```
 
 Global references have type `Ref(T)` and act as method proxies to underlying
-object of that type. Refs will automatically stripped where a value
+object of that type. Refs will be automatically stripped where a value
 of the underlying type is expected.
 
 Local references may be explicitly released in order to free their resources
@@ -117,9 +117,10 @@ explicitly released.
 
 ## Thread-Safety
 
-JNI Environments are _not thread safe_. Therefore, wrapper objects
-are also not thread safe. Since Lua and the Terra compiler are single
-threaded, the lack of thread safety is not an issue for the embedded JVM.
+JNI Environments are _not thread safe_. Therefore, wrapper objects are also
+not thread safe. Since Lua and the Terra compiler are single threaded, the
+lack of thread safety is not an issue for the embedded JVM.  For native
+extensions, care must be exercised with wrapper object environments.
 
 Using `J.acquire` to create a global reference will strip the environment
 from a wrapper object. The global reference can then be used safely on
