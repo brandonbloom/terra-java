@@ -189,7 +189,10 @@ function P.method(T, ret, name, params)
   local target = (ctor or static)
                  and (`jvm.Object{[ENV], [classes[T]]}) or (`self._obj)
   params = static and params or util.popl(params)
-  local sig = jtypes.jvm_sig(ret, params)
+  local param_types = terralib.newlist(params):map(function(param)
+    return param.type
+  end)
+  local sig = jtypes.jvm_sig(ret, param_types)
   local modifier = static and "Static" or ""
   local find = "Get" .. modifier .. "MethodID"
   local call = ctor and "NewObject"
@@ -351,6 +354,10 @@ for name, T in pairs(jtypes.java_primitives) do
   if name ~= "void" then
     P.Array(T)
   end
+end
+
+function P.generated(f)
+  return inits[f] ~= nil
 end
 
 P.embedded = macro(function()

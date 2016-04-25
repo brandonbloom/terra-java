@@ -283,6 +283,25 @@ terra Foo:someMethod(str : lang.String, x : J.int)
 end
 ```
 
+Note that the `terra Class:method(...` sugar introduces an initial paremter
+with the name `self`. Terra-Java treats this name specially to identify
+instance methods. Static methods can be defined using `.` instead of
+`:` or without the sugar:
+
+```lua
+terra Foo.staticMethod1 = terra()
+  ...
+end
+
+terra Foo.methods.staticMethod2 = terra()
+  ...
+end
+
+terra Foo.methods.instanceMethod = terra(self : Foo)
+  ...
+end
+```
+
 ## Compiling A Native Extension Library
 
 Use the `J.savelib` function.

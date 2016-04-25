@@ -77,13 +77,16 @@ function P.jvm_name(typ)
   return ret
 end
 
-function P.jvm_sig(ret, params)
-  local sig = "("
-  for i, sym in ipairs(params) do
-    sig = sig .. P.jvm_name(sym.type)
+function P.jvm_param_sig(params)
+  local sig = ""
+  for i, typ in ipairs(params) do
+    sig = sig .. P.jvm_name(typ)
   end
-  sig = sig .. ")" .. P.jvm_name(ret)
   return sig
+end
+
+function P.jvm_sig(ret, params)
+  return "(" .. P.jvm_param_sig(params) .. ")" .. P.jvm_name(ret)
 end
 
 function P.jni_name(typ)
