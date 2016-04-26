@@ -1,9 +1,9 @@
 -- This file implements a generic type for JNI global references.
 
 local jni = require "terra-java/jni"
-local declare = require "terra-java/declare"
+local jvm = require "terra-java/jvm"
 
-local ENV = declare.ENV
+local ENV = jvm.ENV
 
 local Ref = terralib.memoize(function(T)
 

@@ -10,8 +10,7 @@ local util = require "terra-java/util"
 
 local P = {}
 
-local ENV = symbol(jvm.Env, "env")
-P.ENV = ENV
+local ENV = jvm.ENV
 
 -- A map of objects to init tables consisting of `q`, a quote of initialization
 -- code, and boolean `used`.

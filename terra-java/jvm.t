@@ -69,10 +69,13 @@ local terra init() : Env
 
 end
 
+local ENV = symbol(Env, "env")
+
 return {
   version = version,
   VM = VM,
   Env = Env,
+  ENV = ENV,
   Object = Object,
   env = init()
 }

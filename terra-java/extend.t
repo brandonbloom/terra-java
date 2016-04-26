@@ -6,7 +6,7 @@ local util = require "terra-java/util"
 local declare = require "terra-java/declare"
 local jtypes = require "terra-java/types"
 
-local ENV = declare.ENV
+local ENV = jvm.ENV
 
 local P = {}
 

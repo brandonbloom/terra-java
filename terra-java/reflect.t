@@ -8,7 +8,7 @@ local util = require "terra-java/util"
 local C = require "terra-java/c"
 local ref = require "terra-java/ref"
 
-local ENV = declare.ENV
+local ENV = jvm.ENV
 
 
 -- Manually declare enough reflection APIs so we can automate declarations.
