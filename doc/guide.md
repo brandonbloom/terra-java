@@ -319,5 +319,12 @@ Don't forget to set Java's `-librarypath` property to include the path of
 your `.jnilib` file!
 
 
+# Debugging
+
+Unfortunately, the JVM forcibly redirects stderr, so if something crashes,
+keep an eye out for `*.log` files for both JVM dumps and Terra-Java log
+messages.
+
+
 [1]: http://docs.oracle.com/javase/7/docs/technotes/guides/jni/spec/jniTOC.html
 [2]: http://terralang.org/
