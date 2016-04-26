@@ -12,7 +12,8 @@ local P = {}
 
 local function mangle(s)
   --XXX Escape non-ascii characters.
-  return s:gsub("_", "_1")
+  return s:gsub("[.]", "/")
+          :gsub("_", "_1")
           :gsub(";", "_2")
           :gsub("[[]", "_3")
           :gsub("/", "_")
@@ -39,7 +40,7 @@ function P.exports(package)
 
   local pkg = getmetatable(package).name
   for cls, T in pairs(package) do
-    local cls_mangled = mangle(jtypes.jvm_name(T))
+    local cls_mangled = mangle(tostring(T))
 
     for name, method in pairs(T.methods) do
 
