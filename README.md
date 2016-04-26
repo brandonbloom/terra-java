@@ -38,7 +38,7 @@ To use Terra-Java from your own Terra project, add the directory containing
 
 ### Build
 
-Compile the Terra-Java runtime and examples:
+Compile the Terra-Java support libraries and examples:
 
 ```bash
 ./build.sh
@@ -50,13 +50,13 @@ Run Terra code that interops with the JVM:
 
 ```bash
 terra ./terra-java/examples/interop.t
+terra ./terra-java/examples/extension/native.t
 ```
 
 Run JVM code that utilizes native extensions:
 
 ```bash
-#XXX include librarypath on command line
-java -classpath ./obj terrajava.examples.extension.Accumulator
+java -classpath ./obj -Djava.library.path=./obj terrajava.examples.extension.Accumulator
 ```
 
 
