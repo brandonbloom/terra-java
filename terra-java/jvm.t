@@ -39,7 +39,8 @@ end)
 local rel = "/terra-java/jvm.t"
 local here = package.searchpath("terra-java/jvm", package.terrapath)
 local obj = here:sub(1, #here - #rel) .. "/obj"
-local option = "-Djava.class.path=" .. obj
+local classpath = "-Djava.class.path=" .. obj
+local libpath = "-Djava.library.path=" .. obj
 
 local version = jni.VERSION_1_6
 
@@ -47,11 +48,12 @@ local terra init() : Env
 
   var args : jni.VMInitArgs
   args.version = version
-  args.nOptions = 1
+  args.nOptions = 2
   var optsSize = sizeof(jni.VMOption) * args.nOptions
   args.options = [&jni.VMOption](C.malloc(optsSize))
   defer C.free(args.options)
-  args.options[0].optionString = option
+  args.options[0].optionString = classpath
+  args.options[1].optionString = libpath
 
   var res = jni.GetDefaultJavaVMInitArgs(&args)
   if res < 0 then

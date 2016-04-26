@@ -41,5 +41,8 @@ terra f()
   return acc:getValue()
 end
 
+-- NOTE: This will fail if the classes are not on java.class.path or
+-- if the extension is not on java.library.path!
 J.load()
+
 print(f())

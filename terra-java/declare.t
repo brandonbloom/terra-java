@@ -90,7 +90,7 @@ function P.class(name, ...)
   inits[T] = initq(quote
     clazz = ENV:FindClass(jni_name)
     if clazz == nil then
-      util.fatal(["Class not found: " .. name])
+      util.fatal(["Cannot find or error loading class: " .. name])
     end
   end)
   classes[T] = clazz
