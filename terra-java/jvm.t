@@ -8,11 +8,11 @@ local jni = require "terra-java/jni"
 local C = require "terra-java/c"
 
 local struct VM {
-  jni : &jni.VM;
+  vm : &jni.VM;
 }
 
 local struct Env {
-  jni : &jni.Env;
+  env : &jni.Env;
 }
 
 local struct Object {
@@ -22,12 +22,12 @@ local struct Object {
 
 VM.metamethods.__methodmissing = macro(function(name, self, ...)
   local args = {...}
-  return `(@self.jni).[name](self.jni, [args])
+  return `(@self.vm).[name](self.vm, [args])
 end)
 
 Env.metamethods.__methodmissing = macro(function(name, self, ...)
   local args = {...}
-  return `(@self.jni).[name](self.jni, [args])
+  return `(@self.env).[name](self.env, [args])
 end)
 
 Object.metamethods.__methodmissing = macro(function(name, self, ...)

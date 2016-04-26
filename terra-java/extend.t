@@ -30,7 +30,7 @@ function P.exports(package)
   terra exports.JNI_OnLoad(vm : &jni.VM, reserved : &opaque)
     var [ENV]
     var vm = jvm.VM{vm}
-    var res = vm:GetEnv([&&opaque](&[ENV].jni), jvm.version)
+    var res = vm:GetEnv([&&opaque](&[ENV].env), jvm.version)
     if res < 0 then
       util.fatal("Error getting JVM during extension load: %d", res)
     end
