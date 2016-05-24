@@ -11,7 +11,7 @@ local ENV = jvm.ENV
 local P = {}
 
 local function mangle(s)
-  --XXX Escape non-ascii characters.
+  --TODO: Escape non-ascii characters as _0XXXX
   return s:gsub("[.]", "/")
           :gsub("_", "_1")
           :gsub(";", "_2")
@@ -66,7 +66,6 @@ function P.exports(package)
             end
             local sig = mangle(jtypes.jvm_param_sig(params))
             local mangled = mangled .. "__" .. sig
-            print("", mangled)
             exports[mangled] = export(def)
           end
         end

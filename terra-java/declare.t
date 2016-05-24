@@ -12,18 +12,23 @@ local P = {}
 
 local ENV = jvm.ENV
 
--- A map of objects to init tables consisting of `q`, a quote of initialization
--- code, and boolean `used`.
-local inits = {}
+-- A map of objects to init list indexes.
+local init_map = {}
+-- A list of tables consisting of `q`, a quote of initialization code,
+-- and boolean `used`.
+local init_list = {}
 
+-- Creates an init object, inserts it in to the list, and returns it's index.
 local function initq(q)
-  return {used = false, q = q}
+  local init = {used = false, q = q}
+  table.insert(init_list, init)
+  return #init_list
 end
 
 -- Returns all used init quotes.
 function P.used_inits()
   local ret = {}
-  for _, init in pairs(inits) do
+  for _, init in ipairs(init_list) do
     if init.used then
       table.insert(ret, init.q)
     end
@@ -34,7 +39,12 @@ end
 local pending = {}
 
 -- Marks an init as used and adds it t
-local function use_init(init)
+local function use_init(key)
+  local index = init_map[key]
+  if not index then
+    return
+  end
+  local init = init_list[index]
   if init.used then
     return
   end
@@ -54,6 +64,8 @@ end
 local cache = {}
 local classes = {}
 function P.reset()
+  init_map = {}
+  init_list = {}
   cache = {}
   classes = {}
 end
@@ -87,7 +99,7 @@ function P.class(name, ...)
   -- Create an initialization record with a statement to find the
   -- Class and slots for member initialization statements.
   local clazz = global(jni.class)
-  inits[T] = initq(quote
+  init_map[T] = initq(quote
     clazz = ENV:FindClass(jni_name)
     if clazz == nil then
       util.fatal(["Cannot find or error loading class: " .. name])
@@ -96,7 +108,7 @@ function P.class(name, ...)
   classes[T] = clazz
 
   -- Always load any mentioned class.
-  use_init(inits[T])
+  use_init(T)
 
   -- Build set of super classes and dispatch chain from top of hierarchy down.
   local chain = {}
@@ -147,10 +159,7 @@ function P.class(name, ...)
         ofn:adddefinition(def)
         -- Mark associated initialization statements as in use.
         -- Native extension definitions don't need an init.
-        local init = inits[def]
-        if init then
-          use_init(init)
-        end
+        use_init(def)
       end
     end
     return #ofn:getdefinitions() > 0 and ofn or nil
@@ -213,11 +222,13 @@ function P.method(T, ret, name, params)
   end
 
   -- Record an initialization statement for a method ID.
-  inits[fn] = initq(quote
-    mid = ENV:[find]([classes[T]], name, sig)
+  local clazz = classes[T]
+  init_map[fn] = initq(quote
+    mid = ENV:[find](clazz, name, sig)
     if mid == nil then
       util.fatal([
-        ("Method not found: %s %s.%s%s\n"):format(T, modifier, name, sig)
+        ("Method not found in %s: %s%s%s"):format(
+          T, modifier == '' and '' or 'static ', name, sig)
       ])
     end
   end)
@@ -252,16 +263,19 @@ P.field = function(T, static, typ, name)
   T.methods[name] = terralib.overloadedfunction(name, {getter, setter})
 
   -- Record an initialization statement for a field ID.
+  local clazz = classes[T]
   local init = initq(quote
-    fid = ENV:[find]([classes[T]], name, sig)
+    fid = ENV:[find](clazz, name, sig)
     if fid == nil then
       util.fatal([
-        ("Field not found: %s %s.%s%s\n"):format(T, modifier, name, sig)
+        ("%s field not found in %s: %s %s"):format(
+          modifier == "" and 'instance' or modifier,
+          T, jtypes.java_name(typ), name)
       ])
     end
   end)
-  inits[getter] = init
-  inits[setter] = init
+  init_map[getter] = init
+  init_map[setter] = init
 
 end
 
@@ -356,7 +370,7 @@ for name, T in pairs(jtypes.java_primitives) do
 end
 
 function P.generated(f)
-  return inits[f] ~= nil
+  return init_map[f] ~= nil
 end
 
 P.embedded = macro(function()

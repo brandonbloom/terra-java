@@ -56,7 +56,10 @@ terra ./terra-java/examples/extension/native.t
 Run JVM code that utilizes native extensions:
 
 ```bash
-java -classpath ./obj -Djava.library.path=./obj terrajava.examples.extension.Accumulator
+java \
+  -Djava.class.path=./obj \
+  -Djava.library.path=./obj \
+  terrajava.examples.extension.Accumulator
 ```
 
 
