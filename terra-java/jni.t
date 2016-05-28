@@ -27,7 +27,7 @@ for k, v in pairs(terralib.includec("jni.h")) do
   -- Strip prefixes from names.
   elseif k:sub(1, 1) == "j" then
     k = k:sub(2)
-  elseif k:sub(1,3) == "JNI" then
+  elseif k:sub(1, 3) == "JNI" then
     k = k:sub(4)
   elseif k:sub(1, 4) == "Java" then
     k = k:sub(5)

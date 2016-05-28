@@ -185,11 +185,18 @@ P.type = function(name)
       or P.class(name)
 end
 
-local convert = macro(function(T, expr)
+P.wrap = macro(function(T, expr)
   if jtypes.primitive(T:astype()) then
     return expr
   end
   return `P.this(T, expr)
+end)
+
+P.unwrap = macro(function(expr)
+  if jtypes.primitive(expr:gettype()) then
+    return expr
+  end
+  return `expr._obj.this
 end)
 
 function P.method(T, ret, name, params)
@@ -221,7 +228,7 @@ function P.method(T, ret, name, params)
   local mid = global(jni.methodID)
   local fn = terra([self], [params]) : ret
     var [ENV] = self._obj.env
-    return convert(ret, target:[call](mid, [args]))
+    return P.wrap(ret, target:[call](mid, [args]))
   end
 
   -- Record an initialization statement for a method ID.
@@ -315,7 +322,7 @@ P.Array = terralib.memoize(function(T)
 
     A.methods.get = terra(self : A, i : jni.int) : T
       var [ENV] = self._obj.env
-      return convert(T, self._obj:GetObjectArrayElement(i))
+      return P.wrap(T, self._obj:GetObjectArrayElement(i))
     end
 
     A.methods.set = terra(self : A, i : jni.int, v : T)

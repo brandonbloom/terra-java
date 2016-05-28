@@ -20,7 +20,17 @@ local function mangle(s)
 end
 
 local function export(f)
-  return f --XXX create fn that wraps arguments and unwraps return value.
+  local params = {}
+  local wrapped = {}
+  for i, param in ipairs(f.definition.parameters) do
+    local sym = symbol(jtypes.jni_type(param.type), param.name)
+    table.insert(params, sym)
+    table.insert(wrapped, `declare.wrap([param.type], [sym]))
+  end
+  return terra(env : &jni.Env, [params])
+    var [ENV] = jvm.Env{env}
+    return declare.unwrap(f(wrapped))
+  end
 end
 
 function P.exports(package)
