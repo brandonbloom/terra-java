@@ -57,8 +57,14 @@ terra f()
 end
 ```
 
-For callbacks from the JVM, such as when implementing native extensions,
-do SOMETHING YET TO BE DOCUMENTED. XXX
+For callbacks from the JVM, such as when implementing native extensions:
+
+```lua
+terra MyClass:method()
+  J.envof(self)
+  -- Use JVM here ...
+end
+```
 
 
 # Initialization

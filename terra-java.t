@@ -7,6 +7,7 @@ local extend = require "terra-java/extend"
 local P = {
   load = declare.load,
   embedded = declare.embedded,
+  envof = declare.envof,
   Array = declare.Array,
   null = declare.null,
   new = declare.new,

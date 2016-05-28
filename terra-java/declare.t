@@ -133,7 +133,10 @@ function P.class(name, ...)
     if supers[to] then
       return `to{expr._obj}
     end
-    --TODO: Handle nil?
+    -- Allow nil.
+    if from == niltype then
+      return `to{jvm.Object{[ENV], nil}}
+    end
     util.errorf("Unable to cast %s", name)
   end
 
@@ -375,6 +378,10 @@ end
 
 P.embedded = macro(function()
   return quote var [ENV] = jvm.env end
+end)
+
+P.envof = macro(function(x)
+  return quote var [ENV] = x._obj.env end
 end)
 
 P.null = macro(function(x)

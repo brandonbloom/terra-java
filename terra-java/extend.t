@@ -73,7 +73,6 @@ function P.exports(package)
       -- Export the only overload.
       elseif terralib.type(method) == "terrafunction" then
         if not declare.generated(method) then
-          print("", mangled)
           exports[mangled] = export(method)
         end
 
