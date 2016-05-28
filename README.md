@@ -31,10 +31,14 @@ variables:
 - `INCLUDE_PATH`: Terra looks here for standard C headers.
 - `JDK_HOME`: Terra-Java looks here for Java headers and libjvm.
 
-To use Terra-Java from your own Terra project, add the directory containing
-`terra-java.t` to one additional environment variable:
+To use Terra-Java from your own Terra project, add a pattern for the directory
+containing `terra-java.t` to one additional environment variable:
 
-- `TERRA_PATH`: Terra's version of `LUA_PATH`.
+- `TERRA_PATH`: Terra's version of `LUA_PATH`. Use `;;` for the default value.
+
+For example:
+
+`TERRA_PATH=/some/path/to/terra-java/?.t;;`
 
 ### Build
 
