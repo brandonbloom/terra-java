@@ -1,7 +1,7 @@
 **WORK IN PROGRESS**
 
 A handful of things in this doc are aspirational, so don't be surprised if
-something doesn't work exaclty as advertised. Feel free to file an issue!
+something doesn't work exactly as advertised. Feel free to file an issue!
 
 
 # Background
