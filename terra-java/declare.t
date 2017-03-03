@@ -18,7 +18,7 @@ local init_map = {}
 -- and boolean `used`.
 local init_list = {}
 
--- Creates an init object, inserts it in to the list, and returns it's index.
+-- Creates an init object, inserts it in to the list, and returns its index.
 local function initq(q)
   local init = {used = false, q = q}
   table.insert(init_list, init)
